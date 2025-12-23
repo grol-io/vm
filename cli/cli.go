@@ -18,11 +18,10 @@ func Main() int {
 	log.Infof("Command: %s, Args: %v", cli.Command, flag.Args())
 	switch cli.Command {
 	case "compile":
-		asm.Compile(flag.Args()...)
+		return asm.Compile(flag.Args()...)
 	case "run":
-		cpu.Run(flag.Args()...)
+		return cpu.Run(flag.Args()...)
 	default:
 		return log.FErrf("invalid command %q", cli.Command)
 	}
-	return 0
 }

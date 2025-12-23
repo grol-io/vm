@@ -1,6 +1,10 @@
 package cpu
 
-import "fortio.org/log"
+import (
+	"strings"
+
+	"fortio.org/log"
+)
 
 const NumRegs = 16
 
@@ -15,10 +19,30 @@ type Instruction uint8
 
 const (
 	Abort Instruction = iota
+	Load
 	Add
+	lastInstruction
 )
 
-func Run(files ...string) {
+//go:generate stringer -type=Instruction
+var _ = Add.String() // force compile error if go generate is missing.
+
+var str2instr map[string]Instruction
+
+func init() {
+	str2instr = make(map[string]Instruction, lastInstruction)
+	for i := range lastInstruction {
+		str2instr[strings.ToLower(i.String())] = i
+	}
+}
+
+func InstructionFromString(s string) (Instruction, bool) {
+	instr, ok := str2instr[strings.ToLower(s)]
+	return instr, ok
+}
+
+func Run(files ...string) int {
 	log.Infof("Running files: %v", files)
 	// TODO: Implement the CPU execution logic
+	return 0
 }
