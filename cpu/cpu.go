@@ -25,6 +25,7 @@ const (
 	Abort Instruction = iota
 	Load
 	Add
+	JNE
 	lastInstruction
 )
 
@@ -106,6 +107,14 @@ func (c *CPU) Execute() error {
 			readValue := c.ReadInt64() // Read the next 8 bytes as the value
 			c.Accumulator += readValue
 			log.Debugf("Add   at PC: %d, value: %d -> %d", pc, readValue, c.Accumulator)
+		case JNE:
+			targetPC := c.ReadInt64()
+			if c.Accumulator != 0 {
+				log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, targetPC)
+				c.PC = uint64(targetPC)
+			} else {
+				log.Debugf("JNE   at PC: %d, not jumping", pc)
+			}
 		default:
 			return fmt.Errorf("unknown instruction: %v", instr)
 		}
