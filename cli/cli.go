@@ -15,7 +15,7 @@ func Main() int {
 	cli.MaxArgs = -1
 	cli.ArgsHelp = "files...\nwhere command is one of: compile, run"
 	cli.Main()
-	log.Infof("Command: %s, Args: %v", cli.Command, flag.Args())
+	log.Debugf("Command: %s, Args: %v", cli.Command, flag.Args())
 	switch cli.Command {
 	case "compile":
 		return asm.Compile(flag.Args()...)
