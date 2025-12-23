@@ -25,10 +25,10 @@ void run_program(CPU *cpu) {
     while (cpu->pc < end) {
         Operation op = cpu->program[cpu->pc];
         switch (op.opcode) {
-            case 0: // NOP
+            case 0: // EXIT
                 printf("Exit at PC %lld: %lld\n", cpu->pc, cpu->accumulator);
                 break;
-                case 1: // LOAD
+            case 1: // LOAD
                 cpu->accumulator = op.data;
                 break;
             case 2: // ADD
