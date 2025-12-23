@@ -40,4 +40,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          TAP_DESCRIPTION: "Go Repl Open Language: simple, small but powerful interpreted language in Go"
+          TAP_DESCRIPTION: "Go Repl Open Language: simple, small but powerful VM language in Go"
