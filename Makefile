@@ -1,6 +1,6 @@
 # all: generate lint check test run
 
-all: generate lint run test
+all: generate lint test run grol_cvm
 
 # Use that tags to test the non select cases (wasi, windows,...): test_alt_timeoutreader
 # GO_BUILD_TAGS:=no_net,no_pprof,test_alt_timeoutreader
@@ -24,8 +24,9 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc-15
 
-cvm: Makefile cvm/cvm.c
-	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_vm cvm/cvm.c
+grol_cvm: Makefile cvm/cvm.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
+	time ./grol_cvm programs/loop.vm
 
 vm-debug: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build -tags debug -o vm-debug .
