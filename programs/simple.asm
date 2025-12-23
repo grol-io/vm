@@ -1,5 +1,5 @@
 # Simple program to add two numbers
 
-LOAD 1
-ADD 2
+LOAD -42
+ADD 1981
 ABORT

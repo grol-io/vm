@@ -3,6 +3,7 @@ package asm
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -63,12 +64,7 @@ func Compile(files ...string) int {
 }
 
 func EmitInt64(w io.Writer, val int64) error {
-	b := []byte{
-		byte(val >> 56), byte(val >> 48), byte(val >> 40), byte(val >> 32),
-		byte(val >> 24), byte(val >> 16), byte(val >> 8), byte(val),
-	}
-	_, err := w.Write(b)
-	return err
+	return binary.Write(w, binary.LittleEndian, val)
 }
 
 func parseArgs(args []string) []int64 {
