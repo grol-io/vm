@@ -75,14 +75,14 @@ func (c *CPU) LoadProgram(p []byte) error {
 	return nil
 }
 
-func ReadInt64(b []byte) int64 {
+func readInt64(b []byte) int64 {
 	return int64(binary.LittleEndian.Uint64(b)) //nolint:gosec // binary cast
 }
 
 // ReadInt64 reads the next 8 bytes from the program as an int64 value.
-// it's ok to panic if the program does not have enough bytes remaining.
+// It's ok to panic if the program does not have enough bytes remaining.
 func (c *CPU) ReadInt64() (v int64) {
-	v = ReadInt64(c.Program[c.PC : c.PC+8])
+	v = readInt64(c.Program[c.PC : c.PC+8])
 	c.PC += 8
 	return v
 }
