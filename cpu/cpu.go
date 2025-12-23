@@ -67,6 +67,7 @@ func Run(files ...string) int {
 
 func (c *CPU) LoadProgram(p []byte) error {
 	c.Program = p
+	c.PC = 0
 	return nil
 }
 
