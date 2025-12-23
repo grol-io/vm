@@ -12,6 +12,8 @@ run: vm
 	./vm compile -loglevel debug programs/simple.asm
 	od -t x1 programs/simple.vm
 	./vm run -loglevel debug programs/simple.vm
+	./vm compile -loglevel debug programs/loop.asm
+	time ./vm run programs/loop.vm
 
 GEN:=cpu/instruction_string.go
 

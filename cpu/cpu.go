@@ -14,7 +14,7 @@ const NumRegs = 16
 
 type CPU struct {
 	Accumulator int64
-	PC          uint64
+	PC          int64
 	// SP          uint64
 	Program []byte
 }
@@ -90,7 +90,7 @@ func (c *CPU) ReadInt64() (v int64) {
 
 func (c *CPU) Execute() error {
 	// TODO: Implement the CPU execution logic
-	for c.PC < uint64(len(c.Program)) {
+	for c.PC < int64(len(c.Program)) {
 		pc := c.PC
 		instr := Instruction(c.Program[pc])
 		c.PC++
@@ -111,7 +111,7 @@ func (c *CPU) Execute() error {
 			targetPC := c.ReadInt64()
 			if c.Accumulator != 0 {
 				log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, targetPC)
-				c.PC = uint64(targetPC)
+				c.PC = targetPC
 			} else {
 				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
