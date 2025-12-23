@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 
 typedef struct {
@@ -16,7 +17,7 @@ typedef struct CPU {
 
 
 void exit_program(CPU *cpu, int64_t data) {
-    printf("Exit at PC %lld: %lld\n", cpu->pc, cpu->accumulator);
+    printf("Exit at PC %" PRId64 ": %" PRId64 "\n", cpu->pc, cpu->accumulator);
     exit(data);
 }
 
@@ -26,7 +27,7 @@ void run_program(CPU *cpu) {
         Operation op = cpu->program[cpu->pc];
         switch (op.opcode) {
             case 0: // EXIT
-                printf("Exit at PC %lld: %lld\n", cpu->pc, cpu->accumulator);
+                printf("Exit at PC %" PRId64 ": %" PRId64 "\n", cpu->pc, cpu->accumulator);
                 break;
             case 1: // LOAD
                 cpu->accumulator = op.data;
@@ -41,12 +42,12 @@ void run_program(CPU *cpu) {
                 }
                 break;
             default:
-                fprintf(stderr, "Unknown opcode %d at PC %lld\n", op.opcode, cpu->pc);
+                fprintf(stderr, "Unknown opcode %d at PC %" PRId64 "\n", op.opcode, cpu->pc);
                 break;
         }
         cpu->pc++;
     }
-    printf("Program finished. Accumulator: %lld\n", cpu->accumulator);
+    printf("Program finished. Accumulator: %" PRId64 "\n", cpu->accumulator);
 }
 
 #define PACKED_SIZE 9

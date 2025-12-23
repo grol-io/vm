@@ -29,7 +29,7 @@ grol_cvm: Makefile cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
 
 tiny_vm: Makefile *.go */*.go $(GEN)
-	CGO_ENABLED=0 tinygo build -o tiny_vm . # -opt 2 is even slower
+	CGO_ENABLED=0 tinygo build -o tiny_vm.ll -opt 2 .
 	time ./tiny_vm run programs/loop.vm
 
 vm-debug: Makefile *.go */*.go $(GEN)
