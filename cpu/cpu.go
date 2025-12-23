@@ -90,21 +90,22 @@ func (c *CPU) ReadInt64() (v int64) {
 func (c *CPU) Execute() error {
 	// TODO: Implement the CPU execution logic
 	for c.PC < uint64(len(c.Program)) {
-		instr := Instruction(c.Program[c.PC])
+		pc := c.PC
+		instr := Instruction(c.Program[pc])
 		c.PC++
 		switch instr {
 		case Abort:
-			log.Infof("Abort instruction encountered. Halting execution.")
+			log.Infof("Abort at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", c.Accumulator, c.PC)
 			return nil
 		case Load:
 			readValue := c.ReadInt64() // Read the next 8 bytes as the value
 			c.Accumulator = readValue
-			log.Debugf("Load instruction encountered at PC: %d, value: %d", c.PC, c.Accumulator)
+			log.Debugf("Load  at PC: %d, value: %d", pc, c.Accumulator)
 		case Add:
 			readValue := c.ReadInt64() // Read the next 8 bytes as the value
 			c.Accumulator += readValue
-			log.Debugf("Add instruction encountered at PC: %d, value: %d -> %d", c.PC, readValue, c.Accumulator)
+			log.Debugf("Add   at PC: %d, value: %d -> %d", pc, readValue, c.Accumulator)
 		default:
 			return fmt.Errorf("unknown instruction: %v", instr)
 		}
