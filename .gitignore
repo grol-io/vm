@@ -44,3 +44,4 @@ tiny_test
 *.pprof
 grol.png
 *.vm
+vm-debug
