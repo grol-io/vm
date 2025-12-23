@@ -28,8 +28,9 @@ grol_cvm: Makefile cvm/cvm.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
 
+TINY_OPTS:=-opt 2
 tiny_vm: Makefile *.go */*.go $(GEN)
-	CGO_ENABLED=0 tinygo build -o tiny_vm.ll -opt 2 .
+	CGO_ENABLED=0 tinygo build -o tiny_vm $(TINY_OPTS) .
 	time ./tiny_vm run programs/loop.vm
 
 vm-debug: Makefile *.go */*.go $(GEN)
