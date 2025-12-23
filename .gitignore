@@ -43,3 +43,4 @@ tiny_test
 *.prof
 *.pprof
 grol.png
+*.vm
