@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -67,6 +68,10 @@ func Run(files ...string) int {
 func (c *CPU) LoadProgram(p []byte) error {
 	c.Program = p
 	c.PC = 0
+	// We keep the accumulator value intact when loading a new program
+	if len(p) == 0 {
+		return errors.New("program is empty")
+	}
 	return nil
 }
 
