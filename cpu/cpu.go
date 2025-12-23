@@ -67,10 +67,6 @@ func Run(files ...string) int {
 func (c *CPU) LoadProgram(p []byte) error {
 	c.Program = p
 	c.PC = 0
-	// for now (see issue #8)
-	if len(p)%9 != 0 {
-		return fmt.Errorf("program length must be a multiple of 9 bytes")
-	}
 	return nil
 }
 
@@ -80,14 +76,17 @@ func ReadInt64(b []byte) int64 {
 
 // ReadInt64 reads the next 8 bytes from the program as an int64 value.
 // it's ok to panic if the program does not have enough bytes remaining.
-func (c *CPU) ReadInt64() int64 {
-	return ReadInt64(c.Program[c.PC+1 : c.PC+9])
+func (c *CPU) ReadInt64() (v int64) {
+	v = ReadInt64(c.Program[c.PC : c.PC+8])
+	c.PC += 8
+	return v
 }
 
 func (c *CPU) Execute() error {
 	// TODO: Implement the CPU execution logic
 	for c.PC < uint64(len(c.Program)) {
 		instr := Instruction(c.Program[c.PC])
+		c.PC++
 		switch instr {
 		case Abort:
 			log.Infof("Abort instruction encountered. Halting execution.")
@@ -104,7 +103,6 @@ func (c *CPU) Execute() error {
 		default:
 			return fmt.Errorf("unknown instruction: %v", instr)
 		}
-		c.PC += 9 // 1 code + 8 bytes of data/operand
 	}
 	return nil
 }
