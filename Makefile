@@ -22,6 +22,9 @@ vm: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build .
 	ls -lh vm
 
+cvm: Makefile cvm/cvm.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_vm cvm/cvm.c
+
 vm-debug: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build -tags debug -o vm-debug .
 
