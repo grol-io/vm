@@ -109,5 +109,6 @@ func (c *CPU) Execute() error {
 			return fmt.Errorf("unknown instruction: %v", instr)
 		}
 	}
+	log.Warnf("Program terminated without explicit Abort instruction. Accumulator: %d, PC: %d", c.Accumulator, c.PC)
 	return nil
 }
