@@ -10,11 +10,13 @@ import (
 	"fortio.org/log"
 )
 
-const NumRegs = 16
+const (
+	NumRegs = 16
+)
 
 type CPU struct {
 	Accumulator int64
-	PC          uint64
+	PC          int64
 	// SP          uint64
 	Program []byte
 }
@@ -25,6 +27,7 @@ const (
 	Abort Instruction = iota
 	Load
 	Add
+	JNE
 	lastInstruction
 )
 
@@ -89,7 +92,7 @@ func (c *CPU) ReadInt64() (v int64) {
 
 func (c *CPU) Execute() error {
 	// TODO: Implement the CPU execution logic
-	for c.PC < uint64(len(c.Program)) {
+	for c.PC < int64(len(c.Program)) {
 		pc := c.PC
 		instr := Instruction(c.Program[pc])
 		c.PC++
@@ -101,11 +104,25 @@ func (c *CPU) Execute() error {
 		case Load:
 			readValue := c.ReadInt64() // Read the next 8 bytes as the value
 			c.Accumulator = readValue
-			log.Debugf("Load  at PC: %d, value: %d", pc, c.Accumulator)
+			if Debug {
+				log.Debugf("Load  at PC: %d, value: %d", pc, c.Accumulator)
+			}
 		case Add:
 			readValue := c.ReadInt64() // Read the next 8 bytes as the value
 			c.Accumulator += readValue
-			log.Debugf("Add   at PC: %d, value: %d -> %d", pc, readValue, c.Accumulator)
+			if Debug {
+				log.Debugf("Add   at PC: %d, value: %d -> %d", pc, readValue, c.Accumulator)
+			}
+		case JNE:
+			targetPC := c.ReadInt64()
+			if c.Accumulator != 0 {
+				if Debug {
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, targetPC)
+				}
+				c.PC = targetPC
+			} else if Debug {
+				log.Debugf("JNE   at PC: %d, not jumping", pc)
+			}
 		default:
 			return fmt.Errorf("unknown instruction: %v", instr)
 		}

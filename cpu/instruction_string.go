@@ -11,12 +11,13 @@ func _() {
 	_ = x[Abort-0]
 	_ = x[Load-1]
 	_ = x[Add-2]
-	_ = x[lastInstruction-3]
+	_ = x[JNE-3]
+	_ = x[lastInstruction-4]
 }
 
-const _Instruction_name = "AbortLoadAddlastInstruction"
+const _Instruction_name = "AbortLoadAddJNElastInstruction"
 
-var _Instruction_index = [...]uint8{0, 5, 9, 12, 27}
+var _Instruction_index = [...]uint8{0, 5, 9, 12, 15, 30}
 
 func (i Instruction) String() string {
 	if i >= Instruction(len(_Instruction_index)-1) {
