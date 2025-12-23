@@ -66,7 +66,7 @@ func Run(files ...string) int {
 }
 
 func (c *CPU) LoadProgram(p []byte) error {
-	c.Program = p
+	c.Program = p[0:len(p):len(p)] // force panic if program is too short/invalid.
 	c.PC = 0
 	// We keep the accumulator value intact when loading a new program
 	if len(p) == 0 {
@@ -80,8 +80,8 @@ func readInt64(b []byte) int64 {
 }
 
 // ReadInt64 reads the next 8 bytes from the program as an int64 value.
-// It's ok to panic if the program does not have enough bytes remaining.
 func (c *CPU) ReadInt64() (v int64) {
+	// It's ok to panic if the program does not have enough bytes remaining.
 	v = readInt64(c.Program[c.PC : c.PC+8])
 	c.PC += 8
 	return v
