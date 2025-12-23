@@ -46,3 +46,5 @@ grol.png
 *.vm
 vm-debug
 grol_cvm
+
+a.out.dSYM
