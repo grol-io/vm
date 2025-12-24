@@ -45,3 +45,7 @@ tiny_test
 grol.png
 *.vm
 vm-debug
+grol_cvm
+
+a.out.dSYM
+tiny_vm

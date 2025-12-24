@@ -3,4 +3,4 @@
 loop:
     add -1
     jne loop
-    abort
+    exit 0
