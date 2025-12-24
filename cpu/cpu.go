@@ -11,7 +11,7 @@ import (
 	"fortio.org/log"
 )
 
-type ImmediateData int64 // 56 bits really.
+type ImmediateData int64 // Signed extended 56 bits really.
 
 type Operation int64
 
@@ -32,7 +32,7 @@ func (op Operation) SetOpcode(opcode Instruction) Operation {
 }
 
 func (op Operation) SetOperand(operand ImmediateData) Operation {
-	if operand > (1<<55-1) || operand < -(1<<55) {
+	if operand > ((1<<55)-1) || operand < -(1<<55) {
 		panic(fmt.Sprintf("operand out of range: %d", operand))
 	}
 	return (op & 0xFF) | (Operation(operand) << 8)
@@ -87,6 +87,7 @@ func Run(files ...string) int {
 		if err != nil {
 			return log.FErrf("Failed to read file %s: %v", file, err)
 		}
+		defer f.Close()
 		header := make([]byte, len(HEADER))
 		_, err = f.Read(header)
 		if err != nil {

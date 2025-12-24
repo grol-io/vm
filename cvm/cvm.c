@@ -95,19 +95,24 @@ int main(int argc, char **argv) {
   }
   fseek(f, 0, SEEK_SET);
   char header[strlen(HEADER) + 1];
+  header[strlen(HEADER)] = '\0';
   if (fread(header, strlen(HEADER), 1, f) != 1) {
     perror("Failed to read header");
+    fclose(f);
+    free(cpu.program);
     return 1;
   }
   if (strncmp(header, HEADER, strlen(HEADER)) != 0) {
     fprintf(stderr, "Invalid header: %s\n", header);
+    fclose(f);
+    free(cpu.program);
     return 1;
   }
   if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) !=
       cpu.program_size) {
     perror("Failed to read operation");
-    free(cpu.program);
     fclose(f);
+    free(cpu.program);
     return 1;
   }
   fclose(f);
