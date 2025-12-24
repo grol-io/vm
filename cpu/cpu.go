@@ -90,44 +90,48 @@ func (c *CPU) LoadProgram(f *os.File) error {
 	return nil
 }
 
-func (c *CPU) Execute() int {
-	end := Data(len(c.Program))
-	for c.PC < end {
-		pc := c.PC
-		op := c.Program[pc]
-		instr := op.Opcode
-		data := op.Data
-		c.PC++
-		switch instr {
+func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
+	end := Data(len(program))
+	for pc < end {
+		op := program[pc]
+		switch op.Opcode {
 		case Exit:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
-			log.Infof("Accumulator: %d, PC: %d", c.Accumulator, c.PC)
-			return int(data)
+			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
+			return accumulator, op.Data
 		case Load:
-			c.Accumulator = data
+			accumulator = op.Data
 			if Debug {
-				log.Debugf("Load at PC: %d, value: %d", pc, c.Accumulator)
+				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
 			}
 		case Add:
-			c.Accumulator += data
+			accumulator += op.Data
 			if Debug {
-				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, data, c.Accumulator)
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Data, accumulator)
 			}
 		case JNE:
-			targetPC := data
-			if c.Accumulator != 0 {
+			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, targetPC)
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Data)
 				}
-				c.PC = targetPC
-			} else if Debug {
+				pc = op.Data
+				continue
+			}
+			if Debug {
 				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
 		default:
-			log.Errf("unknown instruction: %v", instr)
-			return -1
+			log.Errf("unknown instruction: %v at PC: %d", op.Opcode, pc)
+			return accumulator, -1
 		}
+		pc++
 	}
-	log.Warnf("Program terminated without explicit Exit instruction. Accumulator: %d, PC: %d", c.Accumulator, c.PC)
-	return 0
+	log.Warnf("Program terminated without explicit Exit instruction. Accumulator: %d, PC: %d", accumulator, pc)
+	return accumulator, 0
+}
+
+func (c *CPU) Execute() int {
+	accumulator, exitCode := execute(c.PC, c.Program, c.Accumulator)
+	c.Accumulator = accumulator
+	return int(exitCode)
 }
