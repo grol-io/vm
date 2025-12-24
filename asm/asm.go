@@ -12,6 +12,11 @@ import (
 	"grol.io/vm/cpu"
 )
 
+type Line struct {
+	Op    cpu.Operation
+	Label string
+}
+
 func Compile(files ...string) int {
 	for _, file := range files {
 		log.Infof("Compiling file: %s", file)
@@ -36,6 +41,7 @@ func Compile(files ...string) int {
 		reader := bufio.NewScanner(f)
 		pc := cpu.ImmediateData(0)
 		labels := make(map[string]cpu.ImmediateData)
+		var result []Line
 		for reader.Scan() {
 			line := strings.TrimSpace(reader.Text())
 			if line == "" || strings.HasPrefix(line, "#") {
@@ -66,26 +72,32 @@ func Compile(files ...string) int {
 			// JNZ handling
 			switch instrEnum {
 			case cpu.JNZ:
-				// resolve label
-				targetPC, ok := labels[arg]
-				if !ok {
-					return log.FErrf("Unknown label: %s", arg)
-				}
-				relativePC := targetPC - pc
-				log.Debugf("Resolved JNZ label %s to PC: %d relative %d", arg, targetPC, relativePC)
-				op = op.SetOperand(relativePC)
+				// don't parse the argument, it will be resolved later
 			default:
 				arg := parseArg(arg)
 				op = op.SetOperand(cpu.ImmediateData(arg))
+			}
+			result = append(result, Line{Op: op, Label: arg})
+			pc++
+		}
+		if err := reader.Err(); err != nil {
+			log.Errf("Error reading file %s: %v", file, err)
+		}
+		for pc, line := range result {
+			op := line.Op
+			if op.Opcode() == cpu.JNZ {
+				// resolve label
+				targetPC, ok := labels[line.Label]
+				if !ok {
+					return log.FErrf("Unknown label: %s", line.Label)
+				}
+				relativePC := targetPC - cpu.ImmediateData(pc)
+				op = op.SetOperand(relativePC)
 			}
 			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 				return log.FErrf("Failed to write operation: %v", err)
 			}
 			log.Debugf("Wrote operation: %x %v %v", (uint64)(op), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
-			pc++
-		}
-		if err := reader.Err(); err != nil {
-			log.Errf("Error reading file %s: %v", file, err)
 		}
 	}
 	return 0
