@@ -101,12 +101,24 @@ func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
 			return accumulator, op.Data
 		case Load:
 			accumulator = op.Data
+			if Debug {
+				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
+			}
 		case Add:
 			accumulator += op.Data
+			if Debug {
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Data, accumulator)
+			}
 		case JNE:
 			if accumulator != 0 {
+				if Debug {
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Data)
+				}
 				pc = op.Data
 				continue
+			}
+			if Debug {
+				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d", op.Opcode, pc)
