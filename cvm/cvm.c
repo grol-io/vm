@@ -15,7 +15,7 @@ typedef struct CPU {
   size_t program_size;
 } CPU;
 
-int run_program(CPU *cpu) {
+void run_program(CPU *cpu) {
   int64_t end = (int64_t)(cpu->program_size);
   while (cpu->pc < end) {
     Operation op = cpu->program[cpu->pc];
@@ -23,7 +23,7 @@ int run_program(CPU *cpu) {
     case 0: // EXIT
       printf("Exit at PC %" PRId64 ": %" PRId64 "\n", cpu->pc,
              cpu->accumulator);
-      return op.data;
+      exit(op.data);
     case 1: // LOAD
       cpu->accumulator = op.data;
       break;
@@ -44,7 +44,6 @@ int run_program(CPU *cpu) {
     cpu->pc++;
   }
   printf("Program finished. Accumulator: %" PRId64 "\n", cpu->accumulator);
-  return 0;
 }
 
 #define PACKED_SIZE 9
@@ -81,7 +80,7 @@ int main(int argc, char **argv) {
   }
   fclose(f);
   printf("Loaded program with %zu operations\n", cpu.program_size);
-  int result = run_program(&cpu);
+  run_program(&cpu);
   free(cpu.program);
-  return result;
+  return 0;
 }
