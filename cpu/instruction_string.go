@@ -20,8 +20,9 @@ const _Instruction_name = "ExitLoadAddJNElastInstruction"
 var _Instruction_index = [...]uint8{0, 4, 8, 11, 14, 29}
 
 func (i Instruction) String() string {
-	if i >= Instruction(len(_Instruction_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_Instruction_index)-1 {
 		return "Instruction(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _Instruction_name[_Instruction_index[i]:_Instruction_index[i+1]]
+	return _Instruction_name[_Instruction_index[idx]:_Instruction_index[idx+1]]
 }
