@@ -1,6 +1,9 @@
 # all: generate lint check test run
 
-all: generate lint test run grol_cvm native
+all: clean generate lint test run grol_cvm native
+
+clean:
+	rm -f vm grol_cvm tiny_vm a.out
 
 # Use that tags to test the non select cases (wasi, windows,...): test_alt_timeoutreader
 # GO_BUILD_TAGS:=no_net,no_pprof,test_alt_timeoutreader
