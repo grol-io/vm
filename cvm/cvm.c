@@ -53,8 +53,8 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("ADD %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator += operand;
       break;
-    case 3: // JNE
-      DEBUG_PRINT("JNE %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+    case 3: // JNZ
+      DEBUG_PRINT("JNZ %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       if (cpu->accumulator != 0) {
         cpu->pc += operand;
         continue;
@@ -70,7 +70,7 @@ void run_program(CPU *cpu) {
 }
 
 #define HEADER "\x01GROL VM" // matches cpu.HEADER
-#define PACKED_SIZE 8
+#define INSTR_SIZE sizeof(Operation)
 
 int main(int argc, char **argv) {
   if (argc < 2) {
@@ -86,8 +86,8 @@ int main(int argc, char **argv) {
   CPU cpu = {0};
   fseek(f, 0, SEEK_END);
   cpu.program_size =
-      ftell(f) / PACKED_SIZE - 1; // packed size of Operation in file - header.
-  cpu.program = malloc(cpu.program_size * sizeof(Operation));
+      (ftell(f)-strlen(HEADER)) / INSTR_SIZE; // packed size of Operation in file - header.
+  cpu.program = malloc(cpu.program_size * INSTR_SIZE);
   if (!cpu.program) {
     perror("Failed to allocate memory for program");
     fclose(f);
@@ -95,19 +95,24 @@ int main(int argc, char **argv) {
   }
   fseek(f, 0, SEEK_SET);
   char header[strlen(HEADER) + 1];
+  header[strlen(HEADER)] = '\0';
   if (fread(header, strlen(HEADER), 1, f) != 1) {
     perror("Failed to read header");
+    fclose(f);
+    free(cpu.program);
     return 1;
   }
   if (strncmp(header, HEADER, strlen(HEADER)) != 0) {
     fprintf(stderr, "Invalid header: %s\n", header);
+    fclose(f);
+    free(cpu.program);
     return 1;
   }
-  if (fread(cpu.program, PACKED_SIZE, cpu.program_size, f) !=
+  if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) !=
       cpu.program_size) {
     perror("Failed to read operation");
-    free(cpu.program);
     fclose(f);
+    free(cpu.program);
     return 1;
   }
   fclose(f);
