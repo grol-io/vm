@@ -1,6 +1,9 @@
 # all: generate lint check test run
 
-all: generate lint run test
+all: clean generate lint test run grol_cvm native
+
+clean:
+	rm -f vm grol_cvm tiny_vm a.out
 
 # Use that tags to test the non select cases (wasi, windows,...): test_alt_timeoutreader
 # GO_BUILD_TAGS:=no_net,no_pprof,test_alt_timeoutreader
@@ -21,6 +24,21 @@ vm: Makefile *.go */*.go $(GEN)
 #	CGO_ENABLED=0 go build -trimpath -ldflags="-s" -tags "$(GO_BUILD_TAGS)" .
 	CGO_ENABLED=0 go build .
 	ls -lh vm
+
+CC:=gcc-15
+
+grol_cvm: Makefile cvm/cvm.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
+	time ./grol_cvm programs/loop.vm
+
+native: Makefile cvm/loop.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
+	time ./a.out programs/loop.vm
+
+TINY_OPTS:=-opt 2
+tiny_vm: Makefile *.go */*.go $(GEN)
+	CGO_ENABLED=0 tinygo build -o tiny_vm $(TINY_OPTS) .
+	time ./tiny_vm run programs/loop.vm
 
 vm-debug: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build -tags debug -o vm-debug .
@@ -52,7 +70,7 @@ cpu/instruction_string.go: cpu/cpu.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build vm install unit-tests
-.PHONY: show_cpu_profile show_mem_profile
+.PHONY: show_cpu_profile show_mem_profile native
 
 show_cpu_profile:
 	-pkill pprof

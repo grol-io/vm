@@ -3,28 +3,33 @@ package cpu
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"fortio.org/log"
 )
 
-const (
-	NumRegs = 16
-)
+type Data int64
+
+type Operation struct {
+	Data   Data
+	Opcode Instruction
+	// padding makes it even slower (!) despite 16bytes alignment
+	// Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7 Instruction
+}
 
 type CPU struct {
-	Accumulator int64
-	PC          int64
+	Accumulator Data
+	PC          Data
 	// SP          uint64
-	Program []byte
+	Program []Operation
 }
 
 type Instruction uint8
 
 const (
-	Abort Instruction = iota
+	Exit Instruction = iota
 	Load
 	Add
 	JNE
@@ -50,71 +55,66 @@ func InstructionFromString(s string) (Instruction, bool) {
 
 func Run(files ...string) int {
 	cpu := &CPU{}
+	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation{}))
 	for _, file := range files {
 		log.Infof("Running file: %s", file)
-		p, err := os.ReadFile(file)
+		f, err := os.Open(file)
 		if err != nil {
 			return log.FErrf("Failed to read file %s: %v", file, err)
 		}
-		err = cpu.LoadProgram(p)
+		err = cpu.LoadProgram(f)
 		if err != nil {
 			return log.FErrf("Failed to load program %s: %v", file, err)
 		}
-		err = cpu.Execute()
-		if err != nil {
-			return log.FErrf("Failed to execute program %s: %v", file, err)
+		execResult := cpu.Execute()
+		if execResult != 0 {
+			log.Warnf("No 0 exit of program %s: %v", file, execResult)
+			return execResult
 		}
 	}
 	return 0
 }
 
-func (c *CPU) LoadProgram(p []byte) error {
-	c.Program = p[0:len(p):len(p)] // force panic if program is too short/invalid.
-	c.PC = 0
-	// We keep the accumulator value intact when loading a new program
-	if len(p) == 0 {
-		return errors.New("program is empty")
+func (c *CPU) LoadProgram(f *os.File) error {
+	var op Operation
+	for {
+		err := binary.Read(f, binary.LittleEndian, &op)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		c.Program = append(c.Program, op)
 	}
 	return nil
 }
 
-func readInt64(b []byte) int64 {
-	return int64(binary.LittleEndian.Uint64(b)) //nolint:gosec // binary cast
-}
-
-// ReadInt64 reads the next 8 bytes from the program as an int64 value.
-func (c *CPU) ReadInt64() (v int64) {
-	// It's ok to panic if the program does not have enough bytes remaining.
-	v = readInt64(c.Program[c.PC : c.PC+8])
-	c.PC += 8
-	return v
-}
-
-func (c *CPU) Execute() error {
-	// TODO: Implement the CPU execution logic
-	for c.PC < int64(len(c.Program)) {
+func (c *CPU) Execute() int {
+	end := Data(len(c.Program))
+	for c.PC < end {
 		pc := c.PC
-		instr := Instruction(c.Program[pc])
+		op := c.Program[pc]
+		instr := op.Opcode
+		data := op.Data
 		c.PC++
 		switch instr {
-		case Abort:
-			log.Infof("Abort at PC: %d. Halting execution.", pc)
+		case Exit:
+			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", c.Accumulator, c.PC)
-			return nil
+			return int(data)
 		case Load:
-			readValue := c.ReadInt64() // Read the next 8 bytes as the value
-			c.Accumulator = readValue
+			c.Accumulator = data
 			if Debug {
-				log.Debugf("Load  at PC: %d, value: %d", pc, c.Accumulator)
+				log.Debugf("Load at PC: %d, value: %d", pc, c.Accumulator)
 			}
 		case Add:
-			readValue := c.ReadInt64() // Read the next 8 bytes as the value
-			c.Accumulator += readValue
+			c.Accumulator += data
 			if Debug {
-				log.Debugf("Add   at PC: %d, value: %d -> %d", pc, readValue, c.Accumulator)
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, data, c.Accumulator)
 			}
 		case JNE:
-			targetPC := c.ReadInt64()
+			targetPC := data
 			if c.Accumulator != 0 {
 				if Debug {
 					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, targetPC)
@@ -124,9 +124,10 @@ func (c *CPU) Execute() error {
 				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
 		default:
-			return fmt.Errorf("unknown instruction: %v", instr)
+			log.Errf("unknown instruction: %v", instr)
+			return -1
 		}
 	}
-	log.Warnf("Program terminated without explicit Abort instruction. Accumulator: %d, PC: %d", c.Accumulator, c.PC)
-	return nil
+	log.Warnf("Program terminated without explicit Exit instruction. Accumulator: %d, PC: %d", c.Accumulator, c.PC)
+	return 0
 }

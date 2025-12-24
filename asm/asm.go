@@ -4,7 +4,6 @@ package asm
 import (
 	"bufio"
 	"encoding/binary"
-	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -34,8 +33,8 @@ func Compile(files ...string) int {
 		writer := bufio.NewWriter(out)
 		defer writer.Flush()
 		reader := bufio.NewScanner(f)
-		pc := int64(0)
-		labels := make(map[string]int64)
+		pc := cpu.Data(0)
+		labels := make(map[string]cpu.Data)
 		for reader.Scan() {
 			line := strings.TrimSpace(reader.Text())
 			if line == "" || strings.HasPrefix(line, "#") {
@@ -57,32 +56,32 @@ func Compile(files ...string) int {
 				return log.FErrf("Unknown instruction: %s", instr)
 			}
 			log.Debugf("Writing instruction: %s %v", instrEnum, args)
-			_ = writer.WriteByte(byte(instrEnum)) // error will be caught in EmitInt64
-			pc++
+			if len(args) != 1 {
+				return log.FErrf("Current instruction %s requires exactly one argument, got %d", instrEnum, len(args))
+			}
+			arg := args[0]
+			op := cpu.Operation{
+				Opcode: instrEnum,
+			}
 			// JNE handling
-			if instrEnum == cpu.JNE {
-				if len(args) != 1 {
-					return log.FErrf("JNE requires exactly one argument")
-				}
+			switch instrEnum {
+			case cpu.JNE:
 				// resolve label
-				label := args[0]
-				targetPC, ok := labels[label]
+				targetPC, ok := labels[arg]
 				if !ok {
-					return log.FErrf("Unknown label: %s", label)
+					return log.FErrf("Unknown label: %s", arg)
 				}
-				log.Debugf("Resolved JNE label %s to PC: %d", label, targetPC)
-				if err := EmitInt64(writer, targetPC); err != nil {
-					return log.FErrf("Failed to write argument: %v", err)
-				}
-				pc += 8
-				continue
+				log.Debugf("Resolved JNE label %s to PC: %d", arg, targetPC)
+				op.Data = targetPC
+			default:
+				arg := parseArg(arg)
+				op.Data = cpu.Data(arg)
 			}
-			for _, arg := range parseArgs(args) {
-				if err := EmitInt64(writer, arg); err != nil {
-					return log.FErrf("Failed to write argument: %v", err)
-				}
-				pc += 8
+			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
+				return log.FErrf("Failed to write operation: %v", err)
 			}
+			log.Debugf("Wrote operation: %#+v", op)
+			pc++
 		}
 		if err := reader.Err(); err != nil {
 			log.Errf("Error reading file %s: %v", file, err)
@@ -91,21 +90,13 @@ func Compile(files ...string) int {
 	return 0
 }
 
-func EmitInt64(w io.Writer, val int64) error {
-	return binary.Write(w, binary.LittleEndian, val)
-}
-
-func parseArgs(args []string) []int64 {
-	result := make([]int64, len(args))
-	for i, arg := range args {
-		var val int64
-		val, err := strconv.ParseInt(arg, 0, 64)
-		if err != nil {
-			log.Errf("Failed to parse argument %q: %v", arg, err)
-			continue
-		}
-		log.Debugf("Parsed argument %q as %d", arg, val)
-		result[i] = val
+func parseArg(arg string) int64 {
+	var val int64
+	val, err := strconv.ParseInt(arg, 0, 64)
+	if err != nil {
+		log.Errf("Failed to parse argument %q: %v", arg, err)
+		return 0
 	}
-	return result
+	log.Debugf("Parsed argument %q as %d", arg, val)
+	return val
 }
