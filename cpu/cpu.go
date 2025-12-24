@@ -13,10 +13,20 @@ import (
 type Data int64
 
 type Operation struct {
-	Data   Data
+	data   [8]byte
 	Opcode Instruction
 	// padding makes it even slower (!) despite 16bytes alignment
 	// Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7 Instruction
+}
+
+func (o *Operation) Data() Data {
+	return Data(binary.LittleEndian.Uint64(o.data[:]))
+}
+func (o *Operation) DataBytes() [8]byte {
+	return o.data
+}
+func (o *Operation) SetData(d Data) {
+	binary.LittleEndian.PutUint64(o.data[:], uint64(d))
 }
 
 type CPU struct {
@@ -76,16 +86,19 @@ func Run(files ...string) int {
 }
 
 func (c *CPU) LoadProgram(f *os.File) error {
-	var op Operation
+	var buf [9]byte
 	for {
-		err := binary.Read(f, binary.LittleEndian, &op)
+		_, err := io.ReadFull(f, buf[:])
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
 		}
-		c.Program = append(c.Program, op)
+		c.Program = append(c.Program, Operation{
+			Opcode: Instruction(buf[8]),
+			data:   [8]byte(buf[0:8]),
+		})
 	}
 	return nil
 }
@@ -98,14 +111,14 @@ func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
 		case Exit:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
-			return accumulator, op.Data
+			return accumulator, op.Data()
 		case Load:
-			accumulator = op.Data
+			accumulator = op.Data()
 			if Debug {
 				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
 			}
 		case Add:
-			accumulator += op.Data
+			accumulator += op.Data()
 			if Debug {
 				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Data, accumulator)
 			}
@@ -114,7 +127,7 @@ func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
 				if Debug {
 					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Data)
 				}
-				pc = op.Data
+				pc = op.Data()
 				continue
 			}
 			if Debug {

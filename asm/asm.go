@@ -3,7 +3,6 @@ package asm
 
 import (
 	"bufio"
-	"encoding/binary"
 	"os"
 	"strconv"
 	"strings"
@@ -72,13 +71,17 @@ func Compile(files ...string) int {
 					return log.FErrf("Unknown label: %s", arg)
 				}
 				log.Debugf("Resolved JNE label %s to PC: %d", arg, targetPC)
-				op.Data = targetPC
+				op.SetData(targetPC)
 			default:
 				arg := parseArg(arg)
-				op.Data = cpu.Data(arg)
+				op.SetData(cpu.Data(arg))
 			}
-			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
+			data := op.DataBytes()
+			if _, err := writer.Write(data[:]); err != nil {
 				return log.FErrf("Failed to write operation: %v", err)
+			}
+			if err := writer.WriteByte(byte(op.Opcode)); err != nil {
+				return log.FErrf("Failed to write operation opcode: %v", err)
 			}
 			log.Debugf("Wrote operation: %#+v", op)
 			pc++
