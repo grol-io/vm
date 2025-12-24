@@ -58,7 +58,7 @@ void run_program(CPU *cpu) {
     case 3: // JNE
       DEBUG_PRINT("JNE %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       if (cpu->accumulator != 0) {
-        cpu->pc = operand;
+        cpu->pc += operand;
         continue;
       }
       break;

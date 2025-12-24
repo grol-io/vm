@@ -71,8 +71,9 @@ func Compile(files ...string) int {
 				if !ok {
 					return log.FErrf("Unknown label: %s", arg)
 				}
-				log.Debugf("Resolved JNE label %s to PC: %d", arg, targetPC)
-				op = op.SetOperand(targetPC)
+				relativePC := targetPC - pc
+				log.Debugf("Resolved JNE label %s to PC: %d relative %d", arg, targetPC, relativePC)
+				op = op.SetOperand(relativePC)
 			default:
 				arg := parseArg(arg)
 				op = op.SetOperand(cpu.ImmediateData(arg))

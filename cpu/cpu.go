@@ -147,7 +147,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				if Debug {
 					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
-				pc = op.Operand()
+				pc += op.Operand()
 				continue
 			}
 			if Debug {
