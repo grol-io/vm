@@ -32,6 +32,7 @@ func Compile(files ...string) int {
 		defer out.Close()
 		writer := bufio.NewWriter(out)
 		defer writer.Flush()
+		_, _ = writer.WriteString(cpu.HEADER)
 		reader := bufio.NewScanner(f)
 		pc := cpu.Data(0)
 		labels := make(map[string]cpu.Data)
@@ -60,27 +61,26 @@ func Compile(files ...string) int {
 				return log.FErrf("Current instruction %s requires exactly one argument, got %d", instrEnum, len(args))
 			}
 			arg := args[0]
-			op := cpu.Operation{
-				Opcode: instrEnum,
-			}
+			var op cpu.Operation
+			op.SetOpcode(instrEnum)
 			// JNE handling
 			switch instrEnum {
-			case cpu.JNE:
+			case cpu.JNZ:
 				// resolve label
 				targetPC, ok := labels[arg]
 				if !ok {
 					return log.FErrf("Unknown label: %s", arg)
 				}
 				log.Debugf("Resolved JNE label %s to PC: %d", arg, targetPC)
-				op.Data = targetPC
+				op.SetOperand(targetPC)
 			default:
 				arg := parseArg(arg)
-				op.Data = cpu.Data(arg)
+				op.SetOperand(cpu.Data(arg))
 			}
 			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 				return log.FErrf("Failed to write operation: %v", err)
 			}
-			log.Debugf("Wrote operation: %#+v", op)
+			log.Debugf("Wrote operation: %x %v %v", (uint64)(op.Data), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
 			pc++
 		}
 		if err := reader.Err(); err != nil {

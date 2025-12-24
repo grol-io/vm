@@ -3,6 +3,7 @@ package cpu
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -13,10 +14,30 @@ import (
 type Data int64
 
 type Operation struct {
-	Data   Data
-	Opcode Instruction
-	// padding makes it even slower (!) despite 16bytes alignment
-	// Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7 Instruction
+	Data Data
+}
+
+func (op *Operation) Opcode() Instruction {
+	return Instruction(op.Data & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
+}
+
+func (op *Operation) Operand() Data {
+	return op.Data >> 8
+}
+
+func Op(opcode Instruction, operand Data) Operation {
+	return Operation{Data: (operand << 8) | Data(opcode)}
+}
+
+func (op *Operation) SetOpcode(opcode Instruction) {
+	op.Data = (op.Data &^ 0xFF) | Data(opcode)
+}
+
+func (op *Operation) SetOperand(operand Data) {
+	if operand > (1<<55-1) || operand < -(1<<55) {
+		panic(fmt.Sprintf("operand out of range: %d", operand))
+	}
+	op.Data = (op.Data & 0xFF) | (operand << 8)
 }
 
 type CPU struct {
@@ -32,8 +53,14 @@ const (
 	Exit Instruction = iota
 	Load
 	Add
-	JNE
+	JNZ
 	lastInstruction
+)
+
+const (
+	// HEADER for the VM binary format, starts with non printable version byte to indicate it's binary.
+	// The first byte is the version byte, followed by the ASCII characters "GROL VM".
+	HEADER = "\x01GROL VM"
 )
 
 //go:generate stringer -type=Instruction
@@ -61,6 +88,14 @@ func Run(files ...string) int {
 		f, err := os.Open(file)
 		if err != nil {
 			return log.FErrf("Failed to read file %s: %v", file, err)
+		}
+		header := make([]byte, len(HEADER))
+		_, err = f.Read(header)
+		if err != nil {
+			return log.FErrf("Failed to read header from file %s: %v", file, err)
+		}
+		if string(header) != HEADER {
+			return log.FErrf("Invalid header in file %s: %q", file, string(header))
 		}
 		err = cpu.LoadProgram(f)
 		if err != nil {
@@ -94,34 +129,34 @@ func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
 	end := Data(len(program))
 	for pc < end {
 		op := program[pc]
-		switch op.Opcode {
+		switch op.Opcode() {
 		case Exit:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
-			return accumulator, op.Data
+			return accumulator, op.Operand()
 		case Load:
-			accumulator = op.Data
+			accumulator = op.Operand()
 			if Debug {
 				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
 			}
 		case Add:
-			accumulator += op.Data
+			accumulator += op.Operand()
 			if Debug {
-				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Data, accumulator)
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Operand(), accumulator)
 			}
-		case JNE:
+		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Data)
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Operand())
 				}
-				pc = op.Data
+				pc = op.Operand()
 				continue
 			}
 			if Debug {
 				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
 		default:
-			log.Errf("unknown instruction: %v at PC: %d", op.Opcode, pc)
+			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
 			return accumulator, -1
 		}
 		pc++

@@ -11,11 +11,11 @@ func _() {
 	_ = x[Exit-0]
 	_ = x[Load-1]
 	_ = x[Add-2]
-	_ = x[JNE-3]
+	_ = x[JNZ-3]
 	_ = x[lastInstruction-4]
 }
 
-const _Instruction_name = "ExitLoadAddJNElastInstruction"
+const _Instruction_name = "ExitLoadAddJNZlastInstruction"
 
 var _Instruction_index = [...]uint8{0, 4, 8, 11, 14, 29}
 

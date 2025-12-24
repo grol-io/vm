@@ -2,5 +2,5 @@
     load 1_000_000_000
 loop:
     add -1
-    jne loop
+    jnz loop
     exit 0
