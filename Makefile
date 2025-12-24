@@ -13,8 +13,10 @@ GO_BUILD_TAGS:=no_net,no_pprof
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
-	od -t x1 programs/simple.vm
+	od -t x8 programs/simple.vm
 	./vm run -loglevel debug programs/simple.vm
+	./vm compile -loglevel debug programs/addr.asm
+	./vm run -loglevel debug programs/addr.vm
 	./vm compile -loglevel debug programs/loop.asm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 

@@ -56,26 +56,31 @@ func Compile(files ...string) int {
 				continue
 			}
 			fields := strings.Fields(line)
-			instr := fields[0]
+			instr := strings.ToLower(fields[0])
 			args := fields[1:]
-			instrEnum, ok := cpu.InstructionFromString(instr)
-			if !ok {
-				return log.FErrf("Unknown instruction: %s", instr)
-			}
-			log.Debugf("Writing instruction: %s %v", instrEnum, args)
 			if len(args) != 1 {
-				return log.FErrf("Current instruction %s requires exactly one argument, got %d", instrEnum, len(args))
+				return log.FErrf("Current instructions (and %s) requires exactly one argument, got %d", instr, len(args))
 			}
 			arg := args[0]
 			var op cpu.Operation
-			op = op.SetOpcode(instrEnum)
-			// JNZ handling
-			switch instrEnum {
-			case cpu.JNZ:
-				// don't parse the argument, it will be resolved later
+			switch instr {
+			case "data":
+				op = cpu.Operation(parseArg(arg))
 			default:
-				arg := parseArg(arg)
-				op = op.SetOperand(cpu.ImmediateData(arg))
+				instrEnum, ok := cpu.InstructionFromString(instr)
+				if !ok {
+					return log.FErrf("Unknown instruction: %s", instr)
+				}
+				log.Debugf("Parsing instruction: %s %v", instrEnum, args)
+				op = op.SetOpcode(instrEnum)
+				// JNZ handling
+				switch instrEnum {
+				case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
+					// don't parse the argument, it will be resolved later
+				default:
+					arg := parseArg(arg)
+					op = op.SetOperand(cpu.ImmediateData(arg))
+				}
 			}
 			result = append(result, Line{Op: op, Label: arg})
 			pc++
@@ -85,7 +90,8 @@ func Compile(files ...string) int {
 		}
 		for pc, line := range result {
 			op := line.Op
-			if op.Opcode() == cpu.JNZ {
+			switch op.Opcode() {
+			case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
 				// resolve label
 				targetPC, ok := labels[line.Label]
 				if !ok {
@@ -93,6 +99,7 @@ func Compile(files ...string) int {
 				}
 				relativePC := targetPC - cpu.ImmediateData(pc)
 				op = op.SetOperand(relativePC)
+			default:
 			}
 			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 				return log.FErrf("Failed to write operation: %v", err)

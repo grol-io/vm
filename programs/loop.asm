@@ -1,13 +1,13 @@
     # 1 billion iterations
-    load 1_000_000_000
+    LoadI 1_000_000_000
 loop:
-    add -1
+    addI -1
     jnz loop
-    load 1
+    loadI 1
     jnz end
     # this should be skipped
-    load 23
+    loadI 23
     exit -7
 end:
-    load -42
+    loadI -42
     exit 0

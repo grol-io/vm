@@ -9,15 +9,18 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[Exit-0]
-	_ = x[Load-1]
-	_ = x[Add-2]
+	_ = x[LoadI-1]
+	_ = x[AddI-2]
 	_ = x[JNZ-3]
-	_ = x[lastInstruction-4]
+	_ = x[Load-4]
+	_ = x[Add-5]
+	_ = x[Store-6]
+	_ = x[lastInstruction-7]
 }
 
-const _Instruction_name = "ExitLoadAddJNZlastInstruction"
+const _Instruction_name = "ExitLoadIAddIJNZLoadAddStorelastInstruction"
 
-var _Instruction_index = [...]uint8{0, 4, 8, 11, 14, 29}
+var _Instruction_index = [...]uint8{0, 4, 9, 13, 16, 20, 23, 28, 43}
 
 func (i Instruction) String() string {
 	idx := int(i) - 0
