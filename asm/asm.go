@@ -34,8 +34,8 @@ func Compile(files ...string) int {
 		defer writer.Flush()
 		_, _ = writer.WriteString(cpu.HEADER)
 		reader := bufio.NewScanner(f)
-		pc := cpu.Data(0)
-		labels := make(map[string]cpu.Data)
+		pc := cpu.ImmediateData(0)
+		labels := make(map[string]cpu.ImmediateData)
 		for reader.Scan() {
 			line := strings.TrimSpace(reader.Text())
 			if line == "" || strings.HasPrefix(line, "#") {
@@ -62,7 +62,7 @@ func Compile(files ...string) int {
 			}
 			arg := args[0]
 			var op cpu.Operation
-			op.SetOpcode(instrEnum)
+			op = op.SetOpcode(instrEnum)
 			// JNE handling
 			switch instrEnum {
 			case cpu.JNZ:
@@ -72,15 +72,15 @@ func Compile(files ...string) int {
 					return log.FErrf("Unknown label: %s", arg)
 				}
 				log.Debugf("Resolved JNE label %s to PC: %d", arg, targetPC)
-				op.SetOperand(targetPC)
+				op = op.SetOperand(targetPC)
 			default:
 				arg := parseArg(arg)
-				op.SetOperand(cpu.Data(arg))
+				op = op.SetOperand(cpu.ImmediateData(arg))
 			}
 			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 				return log.FErrf("Failed to write operation: %v", err)
 			}
-			log.Debugf("Wrote operation: %x %v %v", (uint64)(op.Data), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
+			log.Debugf("Wrote operation: %x %v %v", (uint64)(op), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
 			pc++
 		}
 		if err := reader.Err(); err != nil {

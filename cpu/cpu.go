@@ -11,38 +11,36 @@ import (
 	"fortio.org/log"
 )
 
-type Data int64
+type ImmediateData int64 // 56 bits really.
 
-type Operation struct {
-	Data Data
+type Operation int64
+
+func (op Operation) Opcode() Instruction {
+	return Instruction(op & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 }
 
-func (op *Operation) Opcode() Instruction {
-	return Instruction(op.Data & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
+func (op Operation) Operand() ImmediateData {
+	return ImmediateData(op >> 8)
 }
 
-func (op *Operation) Operand() Data {
-	return op.Data >> 8
+func (op Operation) OperandInt64() int64 {
+	return int64(op >> 8)
 }
 
-func Op(opcode Instruction, operand Data) Operation {
-	return Operation{Data: (operand << 8) | Data(opcode)}
+func (op Operation) SetOpcode(opcode Instruction) Operation {
+	return (op &^ 0xFF) | Operation(opcode)
 }
 
-func (op *Operation) SetOpcode(opcode Instruction) {
-	op.Data = (op.Data &^ 0xFF) | Data(opcode)
-}
-
-func (op *Operation) SetOperand(operand Data) {
+func (op Operation) SetOperand(operand ImmediateData) Operation {
 	if operand > (1<<55-1) || operand < -(1<<55) {
 		panic(fmt.Sprintf("operand out of range: %d", operand))
 	}
-	op.Data = (op.Data & 0xFF) | (operand << 8)
+	return (op & 0xFF) | (Operation(operand) << 8)
 }
 
 type CPU struct {
-	Accumulator Data
-	PC          Data
+	Accumulator int64
+	PC          ImmediateData
 	// SP          uint64
 	Program []Operation
 }
@@ -82,7 +80,7 @@ func InstructionFromString(s string) (Instruction, bool) {
 
 func Run(files ...string) int {
 	cpu := &CPU{}
-	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation{}))
+	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation(0)))
 	for _, file := range files {
 		log.Infof("Running file: %s", file)
 		f, err := os.Open(file)
@@ -125,29 +123,29 @@ func (c *CPU) LoadProgram(f *os.File) error {
 	return nil
 }
 
-func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
-	end := Data(len(program))
+func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
+	end := ImmediateData(len(program))
 	for pc < end {
 		op := program[pc]
 		switch op.Opcode() {
 		case Exit:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
-			return accumulator, op.Operand()
+			return accumulator, op.OperandInt64()
 		case Load:
-			accumulator = op.Operand()
+			accumulator = op.OperandInt64()
 			if Debug {
 				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
 			}
 		case Add:
-			accumulator += op.Operand()
+			accumulator += op.OperandInt64()
 			if Debug {
-				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Operand(), accumulator)
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Operand())
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
 				pc = op.Operand()
 				continue
