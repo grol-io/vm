@@ -19,13 +19,11 @@
   } while (0)
 #endif
 
-typedef struct {
-  int64_t raw_data; // int64_t
-} Operation;
+typedef int64_t Operation;
 
-uint8_t get_opcode(Operation op) { return (uint8_t)(op.raw_data & 0xFF); }
+uint8_t get_opcode(Operation op) { return (uint8_t)(op & 0xFF); }
 
-int64_t get_operand(Operation op) { return (int64_t)(op.raw_data >> 8); }
+int64_t get_operand(Operation op) { return (int64_t)(op >> 8); }
 
 typedef struct CPU {
   int64_t accumulator;
