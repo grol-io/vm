@@ -11,7 +11,7 @@ import (
 	"fortio.org/log"
 )
 
-type ImmediateData int64 // 56 bits really.
+type ImmediateData int64 // Signed extended 56 bits really.
 
 type Operation int64
 
@@ -32,7 +32,7 @@ func (op Operation) SetOpcode(opcode Instruction) Operation {
 }
 
 func (op Operation) SetOperand(operand ImmediateData) Operation {
-	if operand > (1<<55-1) || operand < -(1<<55) {
+	if operand > ((1<<55)-1) || operand < -(1<<55) {
 		panic(fmt.Sprintf("operand out of range: %d", operand))
 	}
 	return (op & 0xFF) | (Operation(operand) << 8)
@@ -87,6 +87,7 @@ func Run(files ...string) int {
 		if err != nil {
 			return log.FErrf("Failed to read file %s: %v", file, err)
 		}
+		defer f.Close()
 		header := make([]byte, len(HEADER))
 		_, err = f.Read(header)
 		if err != nil {
@@ -145,13 +146,13 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
+					log.Debugf("JNZ   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JNE   at PC: %d, not jumping", pc)
+				log.Debugf("JNZ   at PC: %d, not jumping", pc)
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)

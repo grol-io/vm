@@ -63,7 +63,7 @@ func Compile(files ...string) int {
 			arg := args[0]
 			var op cpu.Operation
 			op = op.SetOpcode(instrEnum)
-			// JNE handling
+			// JNZ handling
 			switch instrEnum {
 			case cpu.JNZ:
 				// resolve label
@@ -72,7 +72,7 @@ func Compile(files ...string) int {
 					return log.FErrf("Unknown label: %s", arg)
 				}
 				relativePC := targetPC - pc
-				log.Debugf("Resolved JNE label %s to PC: %d relative %d", arg, targetPC, relativePC)
+				log.Debugf("Resolved JNZ label %s to PC: %d relative %d", arg, targetPC, relativePC)
 				op = op.SetOperand(relativePC)
 			default:
 				arg := parseArg(arg)
