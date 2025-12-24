@@ -31,6 +31,11 @@ grol_cvm: Makefile cvm/cvm.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
 
+debug_cvm:
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
+	./grol_cvm programs/simple.vm
+
+
 native: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
 	time ./a.out programs/loop.vm
@@ -70,7 +75,7 @@ cpu/instruction_string.go: cpu/cpu.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build vm install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native
+.PHONY: show_cpu_profile show_mem_profile native debug_cvm
 
 show_cpu_profile:
 	-pkill pprof
