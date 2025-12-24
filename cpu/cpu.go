@@ -3,6 +3,7 @@ package cpu
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -10,18 +11,36 @@ import (
 	"fortio.org/log"
 )
 
-type Data int64
+type ImmediateData int64 // 56 bits really.
 
-type Operation struct {
-	Data   Data
-	Opcode Instruction
-	// padding makes it even slower (!) despite 16bytes alignment
-	// Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7 Instruction
+type Operation int64
+
+func (op Operation) Opcode() Instruction {
+	return Instruction(op & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
+}
+
+func (op Operation) Operand() ImmediateData {
+	return ImmediateData(op >> 8)
+}
+
+func (op Operation) OperandInt64() int64 {
+	return int64(op >> 8)
+}
+
+func (op Operation) SetOpcode(opcode Instruction) Operation {
+	return (op &^ 0xFF) | Operation(opcode)
+}
+
+func (op Operation) SetOperand(operand ImmediateData) Operation {
+	if operand > (1<<55-1) || operand < -(1<<55) {
+		panic(fmt.Sprintf("operand out of range: %d", operand))
+	}
+	return (op & 0xFF) | (Operation(operand) << 8)
 }
 
 type CPU struct {
-	Accumulator Data
-	PC          Data
+	Accumulator int64
+	PC          ImmediateData
 	// SP          uint64
 	Program []Operation
 }
@@ -32,8 +51,14 @@ const (
 	Exit Instruction = iota
 	Load
 	Add
-	JNE
+	JNZ
 	lastInstruction
+)
+
+const (
+	// HEADER for the VM binary format, starts with non printable version byte to indicate it's binary.
+	// The first byte is the version byte, followed by the ASCII characters "GROL VM".
+	HEADER = "\x01GROL VM"
 )
 
 //go:generate stringer -type=Instruction
@@ -55,12 +80,20 @@ func InstructionFromString(s string) (Instruction, bool) {
 
 func Run(files ...string) int {
 	cpu := &CPU{}
-	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation{}))
+	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation(0)))
 	for _, file := range files {
 		log.Infof("Running file: %s", file)
 		f, err := os.Open(file)
 		if err != nil {
 			return log.FErrf("Failed to read file %s: %v", file, err)
+		}
+		header := make([]byte, len(HEADER))
+		_, err = f.Read(header)
+		if err != nil {
+			return log.FErrf("Failed to read header from file %s: %v", file, err)
+		}
+		if string(header) != HEADER {
+			return log.FErrf("Invalid header in file %s: %q", file, string(header))
 		}
 		err = cpu.LoadProgram(f)
 		if err != nil {
@@ -90,38 +123,38 @@ func (c *CPU) LoadProgram(f *os.File) error {
 	return nil
 }
 
-func execute(pc Data, program []Operation, accumulator Data) (Data, Data) {
-	end := Data(len(program))
+func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
+	end := ImmediateData(len(program))
 	for pc < end {
 		op := program[pc]
-		switch op.Opcode {
+		switch op.Opcode() {
 		case Exit:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
-			return accumulator, op.Data
+			return accumulator, op.OperandInt64()
 		case Load:
-			accumulator = op.Data
+			accumulator = op.OperandInt64()
 			if Debug {
 				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
 			}
 		case Add:
-			accumulator += op.Data
+			accumulator += op.OperandInt64()
 			if Debug {
-				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.Data, accumulator)
+				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
-		case JNE:
+		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.Data)
+					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
-				pc = op.Data
+				pc += op.Operand()
 				continue
 			}
 			if Debug {
 				log.Debugf("JNE   at PC: %d, not jumping", pc)
 			}
 		default:
-			log.Errf("unknown instruction: %v at PC: %d", op.Opcode, pc)
+			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
 			return accumulator, -1
 		}
 		pc++
