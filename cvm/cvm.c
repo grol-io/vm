@@ -23,6 +23,8 @@ void run_program(CPU *cpu) {
     case 0: // EXIT
       printf("Exit at PC %" PRId64 ": %" PRId64 "\n", cpu->pc,
              cpu->accumulator);
+      // note that switching to int and using return op.data; adds 1s to
+      // linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
       exit(op.data);
     case 1: // LOAD
       cpu->accumulator = op.data;
