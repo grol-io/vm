@@ -53,8 +53,8 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("ADD %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator += operand;
       break;
-    case 3: // JNE
-      DEBUG_PRINT("JNE %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+    case 3: // JNZ
+      DEBUG_PRINT("JNZ %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       if (cpu->accumulator != 0) {
         cpu->pc += operand;
         continue;

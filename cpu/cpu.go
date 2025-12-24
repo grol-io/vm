@@ -145,13 +145,13 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNE   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
+					log.Debugf("JNZ   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JNE   at PC: %d, not jumping", pc)
+				log.Debugf("JNZ   at PC: %d, not jumping", pc)
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
