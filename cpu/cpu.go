@@ -48,10 +48,13 @@ type CPU struct {
 type Instruction uint8
 
 const (
-	Exit Instruction = iota
+	ExitI Instruction = iota
+	LoadI
+	AddI
+	JNZ
 	Load
 	Add
-	JNZ
+	Store
 	lastInstruction
 )
 
@@ -62,7 +65,7 @@ const (
 )
 
 //go:generate stringer -type=Instruction
-var _ = Add.String() // force compile error if go generate is missing.
+var _ = lastInstruction.String() // force compile error if go generate is missing.
 
 var str2instr map[string]Instruction
 
@@ -73,8 +76,9 @@ func init() {
 	}
 }
 
+// InstructionFromString converts a string (which must be lowercase) to an Instruction.
 func InstructionFromString(s string) (Instruction, bool) {
-	instr, ok := str2instr[strings.ToLower(s)]
+	instr, ok := str2instr[s]
 	return instr, ok
 }
 
@@ -129,31 +133,54 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 	for pc < end {
 		op := program[pc]
 		switch op.Opcode() {
-		case Exit:
+		case ExitI:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
-			log.Infof("Accumulator: %d, PC: %d", accumulator, pc)
+			log.Infof("Accumulator: %d (%x), PC: %d", accumulator, accumulator, pc)
 			return accumulator, op.OperandInt64()
-		case Load:
+		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {
-				log.Debugf("Load at PC: %d, value: %d", pc, accumulator)
+				log.Debugf("LoadI   at PC: %d, value: %d", pc, accumulator)
 			}
-		case Add:
+		case AddI:
 			accumulator += op.OperandInt64()
 			if Debug {
-				log.Debugf("Add  at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("AddI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNZ   at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
+					log.Debugf("JNZ    at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JNZ   at PC: %d, not jumping", pc)
+				log.Debugf("JNZ    at PC: %d, not jumping", pc)
 			}
+		case Load:
+			offset := op.Operand()
+			// ok to panic if offset is out of bounds
+			accumulator = int64(program[pc+offset])
+			if Debug {
+				log.Debugf("Load   at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
+			}
+		case Add:
+			offset := op.Operand()
+			// ok to panic if offset is out of bounds
+			value := int64(program[pc+offset])
+			accumulator += value
+			if Debug {
+				log.Debugf("Add    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+			}
+		case Store:
+			offset := op.Operand()
+			if Debug {
+				oldValue := int64(program[pc+offset]) // may panic if offset is out of bounds, that's fine
+				log.Debugf("Store  at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
+			}
+			// ok to panic if offset is out of bounds
+			program[pc+offset] = Operation(accumulator)
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
 			return accumulator, -1

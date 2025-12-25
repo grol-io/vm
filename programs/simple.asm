@@ -1,7 +1,7 @@
-# Simple program to add two numbers
+# Simple program to add two numbers using immediate instructions
 
-LOAD -42
-ADD 1981
+LoadI -42
+AddI 1981
 # Comment out to get the warning
-# [WRN] Program terminated without explicit Abort instruction. Accumulator: 1939, PC: 18
-EXIT 0
+# [WRN] Program terminated without explicit Exit instruction. Accumulator: 1939, PC: 18
+ExitI 0

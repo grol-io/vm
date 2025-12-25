@@ -13,8 +13,19 @@
   do {                                                                         \
     fprintf(stderr, fmt, __VA_ARGS__);                                         \
   } while (0)
+#define DEBUG_ASSERT(expr)                                                     \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      fprintf(stderr, "Assertion failed: %s, file %s, line %d\n", #expr,       \
+              __FILE__, __LINE__);                                             \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 #else
 #define DEBUG_PRINT(fmt, ...)                                                  \
+  do {                                                                         \
+  } while (0)
+#define DEBUG_ASSERT(expr)                                                     \
   do {                                                                         \
   } while (0)
 #endif
@@ -39,18 +50,18 @@ void run_program(CPU *cpu) {
     uint8_t opcode = get_opcode(op);
     int64_t operand = get_operand(op);
     switch (opcode) {
-    case 0: // EXIT
+    case 0: // ExitI
       printf("Exit at PC %" PRId64 ": %" PRId64 " code: %" PRIX64 "\n", cpu->pc,
              cpu->accumulator, operand);
       // note that switching to int and using return op.data; adds 1s to
       // linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
       exit(operand);
-    case 1: // LOAD
-      DEBUG_PRINT("LOAD %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+    case 1: // LoadI
+      DEBUG_PRINT("LoadI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator = operand;
       break;
-    case 2: // ADD
-      DEBUG_PRINT("ADD %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+    case 2: // AddI
+      DEBUG_PRINT("AddI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator += operand;
       break;
     case 3: // JNZ
@@ -59,6 +70,30 @@ void run_program(CPU *cpu) {
         cpu->pc += operand;
         continue;
       }
+      break;
+    case 4: // Load
+      DEBUG_PRINT("Load   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->accumulator = (int64_t)cpu->program[cpu->pc + operand];
+      DEBUG_PRINT("       loaded value: %" PRId64 "\n", cpu->accumulator);
+      break;
+    case 5: // Add
+      DEBUG_PRINT("Add    at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->accumulator += (int64_t)cpu->program[cpu->pc + operand];
+      DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
+      break;
+    case 6: // Store
+      DEBUG_PRINT("Store  at PC %" PRId64 ", offset: %" PRId64
+                  ", value: %" PRId64 "\n",
+                  cpu->pc, operand, cpu->accumulator);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
     default:
       fprintf(stderr, "Unknown opcode %d at PC %" PRId64 "\n", opcode, cpu->pc);
@@ -85,8 +120,8 @@ int main(int argc, char **argv) {
   }
   CPU cpu = {0};
   fseek(f, 0, SEEK_END);
-  cpu.program_size =
-      (ftell(f)-strlen(HEADER)) / INSTR_SIZE; // packed size of Operation in file - header.
+  cpu.program_size = (ftell(f) - strlen(HEADER)) /
+                     INSTR_SIZE; // packed size of Operation in file - header.
   cpu.program = malloc(cpu.program_size * INSTR_SIZE);
   if (!cpu.program) {
     perror("Failed to allocate memory for program");
@@ -108,8 +143,7 @@ int main(int argc, char **argv) {
     free(cpu.program);
     return 1;
   }
-  if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) !=
-      cpu.program_size) {
+  if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) != cpu.program_size) {
     perror("Failed to read operation");
     fclose(f);
     free(cpu.program);
