@@ -76,7 +76,7 @@ func init() {
 	}
 }
 
-// InstructionFromString converts a lower case string to an Instruction.
+// InstructionFromString converts a string (which must be lowercase) to an Instruction.
 func InstructionFromString(s string) (Instruction, bool) {
 	instr, ok := str2instr[s]
 	return instr, ok
