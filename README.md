@@ -12,7 +12,7 @@ This is an early experiment and comparison and optimization of a miniature assem
 Immediate operand instructions:
 - `LoadI`, `AddI`, and `ExitI` (to be replaced by syscall eventually, see #14)
 Relative address based instructions:
-- `Load`, `Add`, `Store`, `JNZ` (jump if not equal to 0)
+- `LoadR`, `AddR`, `StoreR`, `JNZ` (jump if not equal to 0)
 
 It compares go, tinygo, C based VMs (and plain C loop for reference).
 

@@ -12,15 +12,15 @@ func _() {
 	_ = x[LoadI-1]
 	_ = x[AddI-2]
 	_ = x[JNZ-3]
-	_ = x[Load-4]
-	_ = x[Add-5]
-	_ = x[Store-6]
+	_ = x[LoadR-4]
+	_ = x[AddR-5]
+	_ = x[StoreR-6]
 	_ = x[lastInstruction-7]
 }
 
-const _Instruction_name = "ExitILoadIAddIJNZLoadAddStorelastInstruction"
+const _Instruction_name = "ExitILoadIAddIJNZLoadRAddRStoreRlastInstruction"
 
-var _Instruction_index = [...]uint8{0, 5, 10, 14, 17, 21, 24, 29, 44}
+var _Instruction_index = [...]uint8{0, 5, 10, 14, 17, 22, 26, 32, 47}
 
 func (i Instruction) String() string {
 	idx := int(i) - 0
