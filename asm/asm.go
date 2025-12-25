@@ -71,13 +71,14 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		instr := strings.ToLower(fields[0])
 		args := fields[1:]
 		if len(args) != 1 {
-			return log.FErrf("Currently all instructions (including %s) requires exactly one argument, got %d", instr, len(args))
+			return log.FErrf("Currently all instructions (including %s) require exactly one argument, got %d", instr, len(args))
 		}
 		arg := args[0]
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
 		switch instr {
 		case "data":
+			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
 			op = cpu.Operation(parseArg(arg))
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
@@ -86,7 +87,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 			}
 			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
 			op = op.SetOpcode(instrEnum)
-			// JNZ handling
+			// Address vs immediate instructions handling
 			switch instrEnum {
 			case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
 				// don't parse the argument, it will be resolved later, store the label

@@ -8,7 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[Exit-0]
+	_ = x[ExitI-0]
 	_ = x[LoadI-1]
 	_ = x[AddI-2]
 	_ = x[JNZ-3]
@@ -18,9 +18,9 @@ func _() {
 	_ = x[lastInstruction-7]
 }
 
-const _Instruction_name = "ExitLoadIAddIJNZLoadAddStorelastInstruction"
+const _Instruction_name = "ExitILoadIAddIJNZLoadAddStorelastInstruction"
 
-var _Instruction_index = [...]uint8{0, 4, 9, 13, 16, 20, 23, 28, 43}
+var _Instruction_index = [...]uint8{0, 5, 10, 14, 17, 21, 24, 29, 44}
 
 func (i Instruction) String() string {
 	idx := int(i) - 0

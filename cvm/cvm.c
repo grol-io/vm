@@ -39,7 +39,7 @@ void run_program(CPU *cpu) {
     uint8_t opcode = get_opcode(op);
     int64_t operand = get_operand(op);
     switch (opcode) {
-    case 0: // EXIT
+    case 0: // ExitI
       printf("Exit at PC %" PRId64 ": %" PRId64 " code: %" PRIX64 "\n", cpu->pc,
              cpu->accumulator, operand);
       // note that switching to int and using return op.data; adds 1s to

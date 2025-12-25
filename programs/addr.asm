@@ -1,7 +1,7 @@
 # Simple program to add two numbers using addr based instructions
     Load num1
     Add num2
-    Exit 0
+    ExitI 0
 num1:
     data -42
 num2:

@@ -7,7 +7,7 @@ loop:
     jnz end
     # this should be skipped
     loadI 23
-    exit -7
+    exitI -7
 end:
     loadI -42
-    exit 0
+    exitI 0

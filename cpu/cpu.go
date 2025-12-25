@@ -48,7 +48,7 @@ type CPU struct {
 type Instruction uint8
 
 const (
-	Exit Instruction = iota
+	ExitI Instruction = iota
 	LoadI
 	AddI
 	JNZ
@@ -133,7 +133,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 	for pc < end {
 		op := program[pc]
 		switch op.Opcode() {
-		case Exit:
+		case ExitI:
 			log.Infof("Exit at PC: %d. Halting execution.", pc)
 			log.Infof("Accumulator: %d (%x), PC: %d", accumulator, accumulator, pc)
 			return accumulator, op.OperandInt64()
