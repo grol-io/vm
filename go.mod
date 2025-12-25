@@ -1,6 +1,6 @@
 module grol.io/vm
 
-go 1.24.11
+go 1.24.0
 
 require (
 	fortio.org/cli v1.12.3
