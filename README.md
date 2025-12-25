@@ -1,13 +1,13 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/grol-io/vm)
 [![GoDoc](https://godoc.org/grol.io/vm?status.svg)](https://pkg.go.dev/grol.io/vm)
 [![Go Report Card](https://goreportcard.com/badge/grol.io/vm)](https://goreportcard.com/report/grol.io/vm)
-[![CI Checks](https://github.com/grol-io/vm/actions/workflows/include.yml/badge.svg)](https://github.com/grol-io/vm/actions/workflows/include.yml)
+[![CI Checks](https://github.com/grol-io/vm/actions/workflows/gochecks.yml/badge.svg)](https://github.com/grol-io/vm/actions/workflows/gochecks.yml)
 
 # vm
 
 Virtual Machine experiment
 
-This is an early experiment and comparison and optimization of a miniature assembler and VM with 4 instructions:
+This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
 
 Immediate operand instructions:
 - `LoadI`, `AddI`, and `ExitI` (to be replaced by syscall eventually, see #14)
