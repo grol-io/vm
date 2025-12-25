@@ -13,8 +13,19 @@
   do {                                                                         \
     fprintf(stderr, fmt, __VA_ARGS__);                                         \
   } while (0)
+#define DEBUG_ASSERT(expr)                                                     \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      fprintf(stderr, "Assertion failed: %s, file %s, line %d\n", #expr,       \
+              __FILE__, __LINE__);                                             \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 #else
 #define DEBUG_PRINT(fmt, ...)                                                  \
+  do {                                                                         \
+  } while (0)
+#define DEBUG_ASSERT(expr)                                                     \
   do {                                                                         \
   } while (0)
 #endif
@@ -61,18 +72,27 @@ void run_program(CPU *cpu) {
       }
       break;
     case 4: // Load
-      DEBUG_PRINT("Load   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc, operand);
+      DEBUG_PRINT("Load   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->accumulator = (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       loaded value: %" PRId64 "\n", cpu->accumulator);
       break;
     case 5: // Add
-      DEBUG_PRINT("Add    at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc, operand);
+      DEBUG_PRINT("Add    at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->accumulator += (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
     case 6: // Store
-      DEBUG_PRINT("Store  at PC %" PRId64 ", offset: %" PRId64 ", value: %" PRId64 "\n",
+      DEBUG_PRINT("Store  at PC %" PRId64 ", offset: %" PRId64
+                  ", value: %" PRId64 "\n",
                   cpu->pc, operand, cpu->accumulator);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
     default:
@@ -100,8 +120,8 @@ int main(int argc, char **argv) {
   }
   CPU cpu = {0};
   fseek(f, 0, SEEK_END);
-  cpu.program_size =
-      (ftell(f)-strlen(HEADER)) / INSTR_SIZE; // packed size of Operation in file - header.
+  cpu.program_size = (ftell(f) - strlen(HEADER)) /
+                     INSTR_SIZE; // packed size of Operation in file - header.
   cpu.program = malloc(cpu.program_size * INSTR_SIZE);
   if (!cpu.program) {
     perror("Failed to allocate memory for program");
@@ -123,8 +143,7 @@ int main(int argc, char **argv) {
     free(cpu.program);
     return 1;
   }
-  if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) !=
-      cpu.program_size) {
+  if (fread(cpu.program, INSTR_SIZE, cpu.program_size, f) != cpu.program_size) {
     perror("Failed to read operation");
     fclose(f);
     free(cpu.program);
