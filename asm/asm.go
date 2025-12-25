@@ -89,7 +89,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 			op = op.SetOpcode(instrEnum)
 			// Address vs immediate instructions handling
 			switch instrEnum {
-			case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
+			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
 				// don't parse the argument, it will be resolved later, store the label
 				label = arg
 			default:
@@ -103,7 +103,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 	for pc, line := range result {
 		op := line.Op
 		switch op.Opcode() {
-		case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
+		case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
 			// resolve label
 			targetPC, ok := labels[line.Label]
 			if !ok {

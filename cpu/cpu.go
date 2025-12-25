@@ -52,9 +52,9 @@ const (
 	LoadI
 	AddI
 	JNZ
-	Load
-	Add
-	Store
+	LoadR
+	AddR
+	StoreR
 	lastInstruction
 )
 
@@ -158,26 +158,26 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			if Debug {
 				log.Debugf("JNZ    at PC: %d, not jumping", pc)
 			}
-		case Load:
+		case LoadR:
 			offset := op.Operand()
 			// ok to panic if offset is out of bounds
 			accumulator = int64(program[pc+offset])
 			if Debug {
-				log.Debugf("Load   at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
+				log.Debugf("LoadR  at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
 			}
-		case Add:
+		case AddR:
 			offset := op.Operand()
 			// ok to panic if offset is out of bounds
 			value := int64(program[pc+offset])
 			accumulator += value
 			if Debug {
-				log.Debugf("Add    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("AddR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
-		case Store:
+		case StoreR:
 			offset := op.Operand()
 			if Debug {
 				oldValue := int64(program[pc+offset]) // may panic if offset is out of bounds, that's fine
-				log.Debugf("Store  at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
+				log.Debugf("StoreR at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
 			}
 			// ok to panic if offset is out of bounds
 			program[pc+offset] = Operation(accumulator)
