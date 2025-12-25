@@ -114,11 +114,11 @@ func TestOperandRoundtrip(t *testing.T) {
 func TestOperandWithOpcode(t *testing.T) {
 	// Test that setting operand doesn't affect opcode and vice versa
 	var op Operation
-	op = op.SetOpcode(Add)
+	op = op.SetOpcode(AddI)
 	op = op.SetOperand(42)
 
-	if op.Opcode() != Add {
-		t.Errorf("Opcode() = %v, want %v", op.Opcode(), Add)
+	if op.Opcode() != AddI {
+		t.Errorf("Opcode() = %v, want %v", op.Opcode(), AddI)
 	}
 	if op.Operand() != 42 {
 		t.Errorf("Operand() = %d, want 42", op.Operand())

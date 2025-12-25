@@ -13,8 +13,10 @@ GO_BUILD_TAGS:=no_net,no_pprof
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
-	od -t x1 programs/simple.vm
+	od -t x8 programs/simple.vm
 	./vm run -loglevel debug programs/simple.vm
+	./vm compile -loglevel debug programs/addr.asm
+	./vm run -loglevel debug programs/addr.vm
 	./vm compile -loglevel debug programs/loop.asm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 
@@ -34,7 +36,7 @@ grol_cvm: Makefile cvm/cvm.c
 debug_cvm:
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
 	./grol_cvm programs/simple.vm
-
+	./grol_cvm programs/addr.vm
 
 native: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
