@@ -125,9 +125,9 @@ func TestOperandWithOpcode(t *testing.T) {
 	}
 
 	// Set a different opcode, operand should remain
-	op = op.SetOpcode(Load)
-	if op.Opcode() != Load {
-		t.Errorf("Opcode() = %v, want %v", op.Opcode(), Load)
+	op = op.SetOpcode(JNZ)
+	if op.Opcode() != JNZ {
+		t.Errorf("Opcode() = %v, want %v", op.Opcode(), JNZ)
 	}
 	if op.Operand() != 42 {
 		t.Errorf("Operand() = %d, want 42", op.Operand())
@@ -135,8 +135,8 @@ func TestOperandWithOpcode(t *testing.T) {
 
 	// Set a different operand, opcode should remain
 	op = op.SetOperand(-100)
-	if op.Opcode() != Load {
-		t.Errorf("Opcode() = %v, want %v", op.Opcode(), Load)
+	if op.Opcode() != JNZ {
+		t.Errorf("Opcode() = %v, want %v", op.Opcode(), JNZ)
 	}
 	if op.Operand() != -100 {
 		t.Errorf("Operand() = %d, want -100", op.Operand())

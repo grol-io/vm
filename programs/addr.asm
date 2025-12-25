@@ -1,8 +1,8 @@
 # Simple program to add two numbers using addr based instructions
-    Load num1
-    Add num2
+    LoadR num1
+    AddR  num2
     ExitI 0
 num1:
-    data -42
+    Data -42
 num2:
-    data 0x7F_FF_FF_FF_FF
+    Data 0x7F_FF_FF_FF_FF

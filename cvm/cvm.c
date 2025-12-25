@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
   }
   CPU cpu = {0};
   fseek(f, 0, SEEK_END);
-  cpu.program_size = (ftell(f) - strlen(HEADER)) /
+  cpu.program_size = (ftell(f) - (sizeof(HEADER) - 1)) /
                      INSTR_SIZE; // packed size of Operation in file - header.
   cpu.program = malloc(cpu.program_size * INSTR_SIZE);
   if (!cpu.program) {
@@ -129,15 +129,15 @@ int main(int argc, char **argv) {
     return 1;
   }
   fseek(f, 0, SEEK_SET);
-  char header[strlen(HEADER) + 1];
-  header[strlen(HEADER)] = '\0';
-  if (fread(header, strlen(HEADER), 1, f) != 1) {
+  char header[sizeof(HEADER)];
+  header[sizeof(HEADER) - 1] = '\0';
+  if (fread(header, sizeof(HEADER) - 1, 1, f) != 1) {
     perror("Failed to read header");
     fclose(f);
     free(cpu.program);
     return 1;
   }
-  if (strncmp(header, HEADER, strlen(HEADER)) != 0) {
+  if (strncmp(header, HEADER, sizeof(HEADER) - 1) != 0) {
     fprintf(stderr, "Invalid header: %s\n", header);
     fclose(f);
     free(cpu.program);
