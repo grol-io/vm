@@ -59,7 +59,7 @@ func Compile(files ...string) int {
 			instr := strings.ToLower(fields[0])
 			args := fields[1:]
 			if len(args) != 1 {
-				return log.FErrf("Current instructions (and %s) requires exactly one argument, got %d", instr, len(args))
+				return log.FErrf("Currently all instructions (including %s) requires exactly one argument, got %d", instr, len(args))
 			}
 			arg := args[0]
 			var op cpu.Operation

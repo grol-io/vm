@@ -76,6 +76,7 @@ func init() {
 	}
 }
 
+// InstructionFromString converts a lower case string to an Instruction.
 func InstructionFromString(s string) (Instruction, bool) {
 	instr, ok := str2instr[s]
 	return instr, ok
@@ -139,12 +140,12 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {
-				log.Debugf("LoadI at PC: %d, value: %d", pc, accumulator)
+				log.Debugf("LoadI   at PC: %d, value: %d", pc, accumulator)
 			}
 		case AddI:
 			accumulator += op.OperandInt64()
 			if Debug {
-				log.Debugf("AddI at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("AddI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
 		case JNZ:
 			if accumulator != 0 {
@@ -159,22 +160,27 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			}
 		case Load:
 			offset := op.Operand()
+			// ok to panic if offset is out of bounds
 			accumulator = int64(program[pc+offset])
 			if Debug {
 				log.Debugf("Load   at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
 			}
 		case Add:
 			offset := op.Operand()
-			accumulator += int64(program[pc+offset])
+			// ok to panic if offset is out of bounds
+			value := int64(program[pc+offset])
+			accumulator += value
 			if Debug {
-				log.Debugf("Add    at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
+				log.Debugf("Add    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case Store:
 			offset := op.Operand()
-			program[pc+offset] = Operation(accumulator)
 			if Debug {
-				log.Debugf("Store  at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
+				oldValue := int64(program[pc+offset]) // may panic if offset is out of bounds, that's fine
+				log.Debugf("Store  at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
 			}
+			// ok to panic if offset is out of bounds
+			program[pc+offset] = Operation(accumulator)
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
 			return accumulator, -1
