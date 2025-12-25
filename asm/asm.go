@@ -39,73 +39,83 @@ func Compile(files ...string) int {
 		defer writer.Flush()
 		_, _ = writer.WriteString(cpu.HEADER)
 		reader := bufio.NewScanner(f)
-		pc := cpu.ImmediateData(0)
-		labels := make(map[string]cpu.ImmediateData)
-		var result []Line
-		for reader.Scan() {
-			line := strings.TrimSpace(reader.Text())
-			if line == "" || strings.HasPrefix(line, "#") {
-				log.Debugf("Skipping line: %s", line)
-				continue
-			}
-			// label
-			if _, found := strings.CutSuffix(line, ":"); found {
-				label := strings.TrimSuffix(line, ":")
-				log.Debugf("Found label: %s at PC: %d", label, pc)
-				labels[label] = pc
-				continue
-			}
-			fields := strings.Fields(line)
-			instr := strings.ToLower(fields[0])
-			args := fields[1:]
-			if len(args) != 1 {
-				return log.FErrf("Currently all instructions (including %s) requires exactly one argument, got %d", instr, len(args))
-			}
-			arg := args[0]
-			var op cpu.Operation
-			switch instr {
-			case "data":
-				op = cpu.Operation(parseArg(arg))
-			default:
-				instrEnum, ok := cpu.InstructionFromString(instr)
-				if !ok {
-					return log.FErrf("Unknown instruction: %s", instr)
-				}
-				log.Debugf("Parsing instruction: %s %v", instrEnum, args)
-				op = op.SetOpcode(instrEnum)
-				// JNZ handling
-				switch instrEnum {
-				case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
-					// don't parse the argument, it will be resolved later
-				default:
-					arg := parseArg(arg)
-					op = op.SetOperand(cpu.ImmediateData(arg))
-				}
-			}
-			result = append(result, Line{Op: op, Label: arg})
-			pc++
+		ret := compile(reader, writer)
+		if ret != 0 {
+			return ret
 		}
 		if err := reader.Err(); err != nil {
 			log.Errf("Error reading file %s: %v", file, err)
 		}
-		for pc, line := range result {
-			op := line.Op
-			switch op.Opcode() {
-			case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
-				// resolve label
-				targetPC, ok := labels[line.Label]
-				if !ok {
-					return log.FErrf("Unknown label: %s", line.Label)
-				}
-				relativePC := targetPC - cpu.ImmediateData(pc)
-				op = op.SetOperand(relativePC)
-			default:
-			}
-			if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
-				return log.FErrf("Failed to write operation: %v", err)
-			}
-			log.Debugf("Wrote operation: %x %v %v", (uint64)(op), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
+	}
+	return 0
+}
+
+func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
+	pc := cpu.ImmediateData(0)
+	labels := make(map[string]cpu.ImmediateData)
+	var result []Line
+	for reader.Scan() {
+		line := strings.TrimSpace(reader.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			log.Debugf("Skipping line: %s", line)
+			continue
 		}
+		// label
+		if _, found := strings.CutSuffix(line, ":"); found {
+			label := strings.TrimSuffix(line, ":")
+			log.Debugf("Found label: %s at PC: %d", label, pc)
+			labels[label] = pc
+			continue
+		}
+		fields := strings.Fields(line)
+		instr := strings.ToLower(fields[0])
+		args := fields[1:]
+		if len(args) != 1 {
+			return log.FErrf("Currently all instructions (including %s) requires exactly one argument, got %d", instr, len(args))
+		}
+		arg := args[0]
+		var op cpu.Operation
+		label := "" // no label except for instructions that require it
+		switch instr {
+		case "data":
+			op = cpu.Operation(parseArg(arg))
+		default:
+			instrEnum, ok := cpu.InstructionFromString(instr)
+			if !ok {
+				return log.FErrf("Unknown instruction: %s", instr)
+			}
+			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
+			op = op.SetOpcode(instrEnum)
+			// JNZ handling
+			switch instrEnum {
+			case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
+				// don't parse the argument, it will be resolved later, store the label
+				label = arg
+			default:
+				arg := parseArg(arg)
+				op = op.SetOperand(cpu.ImmediateData(arg))
+			}
+		}
+		result = append(result, Line{Op: op, Label: label})
+		pc++
+	}
+	for pc, line := range result {
+		op := line.Op
+		switch op.Opcode() {
+		case cpu.JNZ, cpu.Load, cpu.Add, cpu.Store:
+			// resolve label
+			targetPC, ok := labels[line.Label]
+			if !ok {
+				return log.FErrf("Unknown label: %s", line.Label)
+			}
+			relativePC := targetPC - cpu.ImmediateData(pc)
+			op = op.SetOperand(relativePC)
+		default:
+		}
+		if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
+			return log.FErrf("Failed to write operation: %v", err)
+		}
+		log.Debugf("Wrote operation: %x %v %v", (uint64)(op), op.Opcode(), op.Operand()) //nolint:gosec // on purpose
 	}
 	return 0
 }
