@@ -1,3 +1,8 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/grol-io/vm)
+[![GoDoc](https://godoc.org/grol.io/vm?status.svg)](https://pkg.go.dev/grol.io/vm)
+[![Go Report Card](https://goreportcard.com/badge/grol.io/vm)](https://goreportcard.com/report/grol.io/vm)
+[![CI Checks](https://github.com/grol-io/vm/actions/workflows/include.yml/badge.svg)](https://github.com/grol-io/vm/actions/workflows/include.yml)
+
 # vm
 
 Virtual Machine experiment
