@@ -1,4 +1,4 @@
-# Simple program to add two numbers using addr based instructions
+# Simple program to add two numbers using relative address based instructions
     LoadR num1
     AddR  num2
     ExitI 0
