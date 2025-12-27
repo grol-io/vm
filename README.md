@@ -10,10 +10,21 @@ Virtual Machine experiment
 This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
 
 Immediate operand instructions:
-- `LoadI`, `AddI`, and `ExitI` (to be replaced by syscall eventually, see #14)
+- `LoadI`, `AddI`
 
 Relative address based instructions:
 - `LoadR`, `AddR`, `StoreR`, `JNZ` (jump if not equal to 0)
+
+Short Data/string format (upcoming):
+- String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)
+- str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word)
+- str16: 2 byte size
+
+Syscall:
+- `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
+  - 1: Exit with value from arg
+  - 2: Sleep argument in milliseconds
+  - more to come
 
 It compares go, tinygo, C based VMs (and plain C loop for reference).
 

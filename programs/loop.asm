@@ -7,7 +7,7 @@ loop:
     jnz end
     # this should be skipped
     loadI 23
-    exitI -7
+    sys exit -7 # not ran
 end:
     loadI -42
-    exitI 0
+    sys exit 0 # actual exit

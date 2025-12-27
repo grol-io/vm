@@ -50,28 +50,104 @@ func Compile(files ...string) int {
 	return 0
 }
 
+func parseLine(line string) ([]string, error) {
+	var result []string
+	var current strings.Builder
+	inQuote := false
+	inEscape := false
+	prevRune := ' '
+	var whichQuote rune
+	emit := func() {
+		if current.Len() > 0 {
+			result = append(result, current.String())
+			current.Reset()
+		}
+	}
+	for _, ch := range line {
+		switch {
+		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
+			if prevRune != ' ' && prevRune != '\t' {
+				log.Errf("Unexpected quote in the middle of a token: %q", line)
+				return nil, strconv.ErrSyntax
+			}
+			emit()
+			whichQuote = ch
+			current.WriteRune(ch)
+			inQuote = true
+		case inQuote && ch == whichQuote && !inEscape:
+			current.WriteRune(ch)
+			s, err := strconv.Unquote(current.String())
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, s)
+			current.Reset()
+			inQuote = false
+		case ch == '#' && !inQuote:
+			emit()
+			return result, nil
+		case !inQuote && (ch == ' ' || ch == '\t'):
+			emit() // collapses all whitespace
+		case !inEscape && ch == '\\' && inQuote && whichQuote != '`':
+			current.WriteRune(ch)
+			inEscape = true
+		default:
+			current.WriteRune(ch)
+			inEscape = false
+		}
+		prevRune = ch
+	}
+	if inQuote {
+		log.Errf("Unterminated quote %c at the end of line: %q", whichQuote, line)
+		return nil, strconv.ErrSyntax
+	}
+	emit()
+	return result, nil
+}
+
+func sysCalls(op *cpu.Operation, args []string) int {
+	syscall, ok := cpu.SyscallFromString(strings.ToLower(args[0]))
+	if !ok {
+		return log.FErrf("Unknown syscall: %s", args[0])
+	}
+	v, err := parseArg(args[1])
+	if err != nil {
+		return log.FErrf("Failed to parse SYS argument %q: %v", args[1], err)
+	}
+	// check if the argument is within the valid range for a syscall operand - 48 bits are left
+	// so signed range is -(1<<47) to (1<<47)-1
+	if v > (1<<47)-1 || v < -(1<<47) {
+		return log.FErrf("SYS argument %q out of range: %d %x vs %d", args[1], v, v, (1 << 47))
+	}
+	*op = op.SetOperand(cpu.ImmediateData(v)<<8 | cpu.ImmediateData(syscall))
+	return 0
+}
+
 func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
 	var result []Line
 	for reader.Scan() {
-		line := strings.TrimSpace(reader.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			log.Debugf("Skipping line: %s", line)
+		fields, err := parseLine(reader.Text())
+		if err != nil {
+			return log.FErrf("Failed to parse line: %v", err)
+		}
+		if len(fields) == 0 {
 			continue
 		}
+		first := fields[0]
 		// label
-		if _, found := strings.CutSuffix(line, ":"); found {
-			label := strings.TrimSuffix(line, ":")
+		if _, found := strings.CutSuffix(first, ":"); found {
+			label := strings.TrimSuffix(first, ":")
 			log.Debugf("Found label: %s at PC: %d", label, pc)
 			labels[label] = pc
 			continue
 		}
-		fields := strings.Fields(line)
-		instr := strings.ToLower(fields[0])
+		instr := strings.ToLower(first)
 		args := fields[1:]
-		if len(args) != 1 {
-			return log.FErrf("Currently all instructions (including %s) require exactly one argument, got %d", instr, len(args))
+		narg := len(args)
+		if (narg != 1 && instr != "sys") || (narg != 2 && instr == "sys") {
+			return log.FErrf("Wrong number of arguments for %s, got %d", instr, narg)
 		}
 		arg := args[0]
 		var op cpu.Operation
@@ -79,7 +155,11 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		switch instr {
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
-			op = cpu.Operation(parseArg(arg))
+			v, err := parseArg(arg)
+			if err != nil {
+				return log.FErrf("Failed to parse data argument %q: %v", arg, err)
+			}
+			op = cpu.Operation(v)
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
@@ -89,12 +169,19 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 			op = op.SetOpcode(instrEnum)
 			// Address vs immediate instructions handling
 			switch instrEnum {
+			case cpu.Sys:
+				if failed := sysCalls(&op, args); failed != 0 {
+					return failed
+				}
 			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
 				// don't parse the argument, it will be resolved later, store the label
 				label = arg
 			default:
-				arg := parseArg(arg)
-				op = op.SetOperand(cpu.ImmediateData(arg))
+				v, err := parseArg(arg)
+				if err != nil {
+					return log.FErrf("Failed to parse argument %q: %v", arg, err)
+				}
+				op = op.SetOperand(cpu.ImmediateData(v))
 			}
 		}
 		result = append(result, Line{Op: op, Label: label})
@@ -121,13 +208,12 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 	return 0
 }
 
-func parseArg(arg string) int64 {
+func parseArg(arg string) (int64, error) {
 	var val int64
 	val, err := strconv.ParseInt(arg, 0, 64)
 	if err != nil {
-		log.Errf("Failed to parse argument %q: %v", arg, err)
-		return 0
+		return 0, err
 	}
 	log.Debugf("Parsed argument %q as %d", arg, val)
-	return val
+	return val, nil
 }

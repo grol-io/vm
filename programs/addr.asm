@@ -1,7 +1,8 @@
 # Simple program to add two numbers using relative address based instructions
     LoadR num1
     AddR  num2
-    ExitI 0
+    # Sys sleep 1000
+    Sys   exit 0
 num1:
     Data -42
 num2:
