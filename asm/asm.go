@@ -54,6 +54,7 @@ func parseLine(line string) ([]string, error) {
 	var result []string
 	var current strings.Builder
 	inQuote := false
+	inEscape := false
 	prevRune := ' '
 	var whichQuote rune
 	emit := func() {
@@ -73,7 +74,7 @@ func parseLine(line string) ([]string, error) {
 			whichQuote = ch
 			current.WriteRune(ch)
 			inQuote = true
-		case inQuote && ch == whichQuote && (whichQuote == '`' || prevRune != '\\'):
+		case inQuote && ch == whichQuote && !inEscape:
 			current.WriteRune(ch)
 			s, err := strconv.Unquote(current.String())
 			if err != nil {
@@ -87,8 +88,12 @@ func parseLine(line string) ([]string, error) {
 			return result, nil
 		case !inQuote && (ch == ' ' || ch == '\t'):
 			emit() // collapses all whitespace
+		case !inEscape && ch == '\\' && inQuote && whichQuote != '`':
+			current.WriteRune(ch)
+			inEscape = true
 		default:
 			current.WriteRune(ch)
+			inEscape = false
 		}
 		prevRune = ch
 	}

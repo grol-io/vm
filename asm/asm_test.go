@@ -45,7 +45,10 @@ func TestParseLine(t *testing.T) {
 		// 2 word instruction example
 		{"Sys Sleep\t250 # Comment", []string{"Sys", "Sleep", "250"}},
 		// Escaped backslash
-		// {`data "a\\"`, []string{"data", `a\\`}},
+		{`data "a\\"`, []string{"data", `a\`}},
+		{`data '\\'`, []string{"data", `\`}},
+		{"data `\\`", []string{"data", `\`}},
+		{"data `\\\\`", []string{"data", `\\`}},
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {
