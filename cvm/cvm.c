@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -50,12 +51,6 @@ void run_program(CPU *cpu) {
     uint8_t opcode = get_opcode(op);
     int64_t operand = get_operand(op);
     switch (opcode) {
-    case 0: // ExitI
-      printf("Exit at PC %" PRId64 ": %" PRId64 " code: %" PRIX64 "\n", cpu->pc,
-             cpu->accumulator, operand);
-      // note that switching to int and using return op.data; adds 1s to
-      // linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
-      exit(operand);
     case 1: // LoadI
       DEBUG_PRINT("LoadI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator = operand;
@@ -95,9 +90,39 @@ void run_program(CPU *cpu) {
                    (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
+    case 7: // Sys
+    {
+      uint8_t syscallid = operand & 0xFF;
+      int64_t syscallarg = operand >> 8;
+      switch (syscallid) {
+      case 1: // Exit
+        printf("Exit Syscall (%d) at PC %" PRId64 ": %" PRId64 "\n", syscallid,
+               cpu->pc, syscallarg);
+        // note that switching to int return and using return syscallarg; adds
+        // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
+        exit(syscallarg);
+      case 2: // Sleep
+        if (syscallarg < 0 || syscallarg > 1000) {
+          fprintf(stderr,
+                  "ERR: Sleep syscall argument out of range at PC %" PRId64
+                  ": %" PRId64 "\n",
+                  cpu->pc, syscallarg);
+          exit(1);
+        }
+        printf("Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
+               syscallarg, cpu->pc);
+        usleep(syscallarg * 1000);
+        break;
+      default:
+        fprintf(stderr, "ERR: Unknown syscall %d at PC %" PRId64 "\n",
+                syscallid, cpu->pc);
+        exit(1);
+      }
+    } break;
     default:
-      fprintf(stderr, "Unknown opcode %d at PC %" PRId64 "\n", opcode, cpu->pc);
-      break;
+      fprintf(stderr, "ERR: Unknown opcode %d at PC %" PRId64 "\n", opcode,
+              cpu->pc);
+      exit(1);
     }
     cpu->pc++;
   }
