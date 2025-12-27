@@ -106,6 +106,10 @@ func sysCalls(op *cpu.Operation, args []string) int {
 		return log.FErrf("Unknown syscall: %s", args[0])
 	}
 	v, err := parseArg(args[1])
+	// check if the argument is within the valid range for a syscall operand - 48 bits are left:
+	if v > (1<<48)-1 || v < -(1<<48) {
+		return log.FErrf("SYS argument %q out of range: %d %x vs %d", args[1], v, v, (1 << 48))
+	}
 	if err != nil {
 		return log.FErrf("Failed to parse SYS argument %q: %v", args[1], err)
 	}

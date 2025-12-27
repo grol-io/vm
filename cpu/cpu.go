@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"fortio.org/log"
 )
@@ -96,15 +97,19 @@ func (c *CPU) LoadProgram(f *os.File) error {
 	return nil
 }
 
+const unknownSyscallAbortCode = 99
+
 func executeSyscall(syscall Syscall, operand int64) (int64, bool) {
 	switch syscall {
 	case Exit:
-		log.Infof("Exit, operand: %d (%x)", operand, operand)
 		return operand, true
+	case Sleep:
+		time.Sleep(time.Duration(operand) * time.Millisecond)
+		return 0, false
 	default:
-		log.Warnf("Unknown syscall: %d", syscall)
+		log.Errf("Unknown syscall: %d", syscall)
 	}
-	return 0, false
+	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
 func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
@@ -115,10 +120,13 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case Sys:
 			arg := op.OperandInt64()
 			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
-			log.Infof("Syscall %v at PC: %d", callID, pc)
-			if code, abort := executeSyscall(callID, arg>>8); abort {
+			v := arg >> 8
+			log.Infof("Syscall %v at PC: %d - operand: %d (%x)", callID, pc, v, v)
+			code, abort := executeSyscall(callID, v)
+			if abort {
 				return accumulator, code
 			}
+			accumulator = code
 		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {

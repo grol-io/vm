@@ -9,6 +9,7 @@ const (
 	Exit
 	Print
 	Read
+	Sleep
 	lastSyscall
 )
 
