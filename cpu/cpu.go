@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"fortio.org/log"
 )
@@ -45,42 +44,11 @@ type CPU struct {
 	Program []Operation
 }
 
-type Instruction uint8
-
-const (
-	ExitI Instruction = iota
-	LoadI
-	AddI
-	JNZ
-	LoadR
-	AddR
-	StoreR
-	lastInstruction
-)
-
 const (
 	// HEADER for the VM binary format, starts with non printable version byte to indicate it's binary.
 	// The first byte is the version byte, followed by the ASCII characters "GROL VM".
 	HEADER = "\x01GROL VM"
 )
-
-//go:generate stringer -type=Instruction
-var _ = lastInstruction.String() // force compile error if go generate is missing.
-
-var str2instr map[string]Instruction
-
-func init() {
-	str2instr = make(map[string]Instruction, lastInstruction)
-	for i := range lastInstruction {
-		str2instr[strings.ToLower(i.String())] = i
-	}
-}
-
-// InstructionFromString converts a string (which must be lowercase) to an Instruction.
-func InstructionFromString(s string) (Instruction, bool) {
-	instr, ok := str2instr[s]
-	return instr, ok
-}
 
 func Run(files ...string) int {
 	cpu := &CPU{}
@@ -106,7 +74,7 @@ func Run(files ...string) int {
 		}
 		execResult := cpu.Execute()
 		if execResult != 0 {
-			log.Warnf("No 0 exit of program %s: %v", file, execResult)
+			log.Warnf("Non 0 exit of program %s: %v", file, execResult)
 			return execResult
 		}
 	}
@@ -128,15 +96,29 @@ func (c *CPU) LoadProgram(f *os.File) error {
 	return nil
 }
 
+func executeSyscall(syscall Syscall, operand int64) (int64, bool) {
+	switch syscall {
+	case Exit:
+		log.Infof("Exit, operand: %d (%x)", operand, operand)
+		return operand, true
+	default:
+		log.Warnf("Unknown syscall: %d", syscall)
+	}
+	return 0, false
+}
+
 func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
 	end := ImmediateData(len(program))
 	for pc < end {
 		op := program[pc]
 		switch op.Opcode() {
-		case ExitI:
-			log.Infof("Exit at PC: %d. Halting execution.", pc)
-			log.Infof("Accumulator: %d (%x), PC: %d", accumulator, accumulator, pc)
-			return accumulator, op.OperandInt64()
+		case Sys:
+			op := op.OperandInt64()
+			callID := Syscall(op & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
+			log.Infof("Syscall %v at PC: %d", callID, pc)
+			if code, abort := executeSyscall(callID, op>>8); abort {
+				return accumulator, code
+			}
 		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {

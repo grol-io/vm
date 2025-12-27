@@ -20,7 +20,7 @@ run: vm
 	./vm compile -loglevel debug programs/loop.asm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 
-GEN:=cpu/instruction_string.go
+GEN:=cpu/instruction_string.go cpu/syscall_string.go
 
 vm: Makefile *.go */*.go $(GEN)
 #	CGO_ENABLED=0 go build -trimpath -ldflags="-s" -tags "$(GO_BUILD_TAGS)" .
@@ -70,10 +70,12 @@ lint: .golangci.yml
 .golangci.yml: Makefile
 	curl -fsS -o .golangci.yml https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml
 
-
 generate: $(GEN)
 
-cpu/instruction_string.go: cpu/cpu.go
+cpu/instruction_string.go: cpu/instruction.go
+	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
+
+cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build vm install unit-tests
