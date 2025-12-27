@@ -31,7 +31,10 @@ func TestParseLine(t *testing.T) {
 		// Backticks
 		{`data ` + "`Hello, World!\\n`", []string{"data", "Hello, World!\\n"}},
 		// other quotes inside a quoted string
-		{`data "He said, 'Hello, World!'` + " and a backtick ` inside\"", []string{"data", "He said, 'Hello, World!' and a backtick ` inside"}},
+		{
+			`data "He said, 'Hello, World!'` + " and a backtick ` inside\"",
+			[]string{"data", "He said, 'Hello, World!' and a backtick ` inside"},
+		},
 		{"data `He said, \"Hello, World!\"`", []string{"data", "He said, \"Hello, World!\""}},
 	}
 	for _, line := range lines {
