@@ -36,6 +36,12 @@ func TestParseLine(t *testing.T) {
 			[]string{"data", "He said, 'Hello, World!' and a backtick ` inside"},
 		},
 		{"data `He said, \"Hello, World!\"`", []string{"data", "He said, \"Hello, World!\""}},
+		// \" doesn't terminate the string
+		{`data "He said, \"Hello, World!\""`, []string{"data", "He said, \"Hello, World!\""}},
+		// \' doesn't terminate the character
+		{`data '\''`, []string{"data", "'"}},
+		// \ not special inside backticks
+		{"data `a backslash: \\`", []string{"data", "a backslash: \\"}},
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {

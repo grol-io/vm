@@ -64,17 +64,16 @@ func parseLine(line string) ([]string, error) {
 	}
 	for _, ch := range line {
 		switch {
-		case inQuote && ch != whichQuote:
-			current.WriteRune(ch)
 		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
 			if prevRune != ' ' && prevRune != '\t' {
+				log.Errf("Unexpected quote in the middle of a token: %q", line)
 				return nil, strconv.ErrSyntax
 			}
 			emit()
 			whichQuote = ch
 			current.WriteRune(ch)
 			inQuote = true
-		case inQuote && ch == whichQuote:
+		case inQuote && ch == whichQuote && (whichQuote == '`' || prevRune != '\\'):
 			current.WriteRune(ch)
 			s, err := strconv.Unquote(current.String())
 			if err != nil {
@@ -94,6 +93,7 @@ func parseLine(line string) ([]string, error) {
 		prevRune = ch
 	}
 	if inQuote {
+		log.Errf("Unterminated quote %c at the end of line: %q", whichQuote, line)
 		return nil, strconv.ErrSyntax
 	}
 	emit()
