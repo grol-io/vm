@@ -109,9 +109,10 @@ func sysCalls(op *cpu.Operation, args []string) int {
 	if err != nil {
 		return log.FErrf("Failed to parse SYS argument %q: %v", args[1], err)
 	}
-	// check if the argument is within the valid range for a syscall operand - 48 bits are left:
-	if v > (1<<48)-1 || v < -(1<<48) {
-		return log.FErrf("SYS argument %q out of range: %d %x vs %d", args[1], v, v, (1 << 48))
+	// check if the argument is within the valid range for a syscall operand - 48 bits are left
+	// so signed range is -(1<<47) to (1<<47)-1
+	if v > (1<<47)-1 || v < -(1<<47) {
+		return log.FErrf("SYS argument %q out of range: %d %x vs %d", args[1], v, v, (1 << 47))
 	}
 	*op = op.SetOperand(cpu.ImmediateData(v)<<8 | cpu.ImmediateData(syscall))
 	return 0
