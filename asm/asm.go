@@ -136,8 +136,8 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		instr := strings.ToLower(first)
 		args := fields[1:]
 		narg := len(args)
-		if narg == 0 || (narg > 1 && instr != "sys") {
-			return log.FErrf("Instructions (including %s, except SYS) require exactly one argument, got %d", instr, narg)
+		if (narg != 1 && instr != "sys") || (narg != 2 && instr == "sys") {
+			return log.FErrf("Wrong number of arguments for %s, got %d", instr, narg)
 		}
 		arg := args[0]
 		var op cpu.Operation
@@ -160,9 +160,6 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 			// Address vs immediate instructions handling
 			switch instrEnum {
 			case cpu.Sys:
-				if narg != 2 {
-					return log.FErrf("SYS instruction requires exactly two arguments, got %d", narg)
-				}
 				if failed := sysCalls(&op, args); failed != 0 {
 					return failed
 				}
