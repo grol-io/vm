@@ -7,8 +7,6 @@ type Syscall uint8
 const (
 	invalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
 	Exit
-	Print
-	Read
 	Sleep
 	lastSyscall
 )
