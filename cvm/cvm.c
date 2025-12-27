@@ -101,13 +101,16 @@ void run_program(CPU *cpu) {
         // note that switching to int return and using return syscallarg; adds
         // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
         exit(syscallarg);
-        break;
       case 2: // Sleep
         if (syscallarg < 0 || syscallarg > 1000) {
-            fprintf(stderr, "ERR: Sleep syscall argument out of range at PC %" PRId64 ": %" PRId64 "\n", cpu->pc, syscallarg);
-            exit(1);
+          fprintf(stderr,
+                  "ERR: Sleep syscall argument out of range at PC %" PRId64
+                  ": %" PRId64 "\n",
+                  cpu->pc, syscallarg);
+          exit(1);
         }
-        printf("Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n", syscallarg, cpu->pc);
+        printf("Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
+               syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;
       default:
@@ -120,7 +123,6 @@ void run_program(CPU *cpu) {
       fprintf(stderr, "ERR: Unknown opcode %d at PC %" PRId64 "\n", opcode,
               cpu->pc);
       exit(1);
-      break;
     }
     cpu->pc++;
   }
