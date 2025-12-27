@@ -55,6 +55,7 @@ func parseLine(line string) ([]string, error) {
 	var current strings.Builder
 	inQuote := false
 	prevRune := ' '
+	var whichQuote rune
 	emit := func() {
 		if current.Len() > 0 {
 			result = append(result, current.String())
@@ -63,24 +64,25 @@ func parseLine(line string) ([]string, error) {
 	}
 	for _, ch := range line {
 		switch {
-		case ch == '"' || ch == '\'' || ch == '`':
-			if inQuote {
-				current.WriteRune(ch)
-				s, err := strconv.Unquote(current.String())
-				if err != nil {
-					return nil, err
-				}
-				result = append(result, s)
-				current.Reset()
-				inQuote = false
-			} else {
-				if prevRune != ' ' && prevRune != '\t' {
-					return nil, strconv.ErrSyntax
-				}
-				emit()
-				current.WriteRune(ch)
-				inQuote = true
+		case inQuote && ch != whichQuote:
+			current.WriteRune(ch)
+		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
+			if prevRune != ' ' && prevRune != '\t' {
+				return nil, strconv.ErrSyntax
 			}
+			emit()
+			whichQuote = ch
+			current.WriteRune(ch)
+			inQuote = true
+		case inQuote && ch == whichQuote:
+			current.WriteRune(ch)
+			s, err := strconv.Unquote(current.String())
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, s)
+			current.Reset()
+			inQuote = false
 		case ch == '#' && !inQuote:
 			emit()
 			return result, nil

@@ -30,6 +30,9 @@ func TestParseLine(t *testing.T) {
 		{"data 'H'", []string{"data", "H"}},
 		// Backticks
 		{`data ` + "`Hello, World!\\n`", []string{"data", "Hello, World!\\n"}},
+		// other quotes inside a quoted string
+		{`data "He said, 'Hello, World!'` + " and a backtick ` inside\"", []string{"data", "He said, 'Hello, World!' and a backtick ` inside"}},
+		{"data `He said, \"Hello, World!\"`", []string{"data", "He said, \"Hello, World!\""}},
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {
@@ -57,6 +60,7 @@ func TestParseLineErrors(t *testing.T) {
 		`data "\"`,        // backslash at end
 		`data "\xZZ"`,     // invalid hex digits
 		`data 'AB'`,       // more than 1 rune in single quotes
+		`data "ab'`,       // unterminated quote/wrong quote
 	}
 	for _, input := range errorCases {
 		t.Run(input, func(t *testing.T) {
