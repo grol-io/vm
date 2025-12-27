@@ -113,10 +113,10 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		op := program[pc]
 		switch op.Opcode() {
 		case Sys:
-			op := op.OperandInt64()
-			callID := Syscall(op & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
+			arg := op.OperandInt64()
+			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 			log.Infof("Syscall %v at PC: %d", callID, pc)
-			if code, abort := executeSyscall(callID, op>>8); abort {
+			if code, abort := executeSyscall(callID, arg>>8); abort {
 				return accumulator, code
 			}
 		case LoadI:
