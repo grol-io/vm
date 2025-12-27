@@ -33,7 +33,7 @@ grol_cvm: Makefile cvm/cvm.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
 
-debug_cvm:
+debug-cvm:
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
 	./grol_cvm programs/simple.vm
 	./grol_cvm programs/addr.vm
