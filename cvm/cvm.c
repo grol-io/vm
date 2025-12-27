@@ -103,6 +103,10 @@ void run_program(CPU *cpu) {
         exit(syscallarg);
         break;
       case 2: // Sleep
+        if (syscallarg < 0 || syscallarg > 1000) {
+            fprintf(stderr, "ERR: Sleep syscall argument out of range at PC %" PRId64 ": %" PRId64 "\n", cpu->pc, syscallarg);
+            exit(1);
+        }
         printf("Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n", syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;

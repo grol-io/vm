@@ -21,7 +21,7 @@ func TestParseLine(t *testing.T) {
 		// String literals:
 		{`data "Hello, World!"`, []string{"data", "Hello, World!"}},
 		// with special characters
-		{`data "a \t\n\rb"`, []string{"data", "a \t\n\rb"}},
+		{`data "a \t\n\r\\b"`, []string{"data", "a \t\n\r\\b"}},
 		// with # in the string
 		{`data "a # b"`, []string{"data", "a # b"}},
 		// Unicode characters
@@ -44,6 +44,8 @@ func TestParseLine(t *testing.T) {
 		{"data `a backslash: \\`", []string{"data", "a backslash: \\"}},
 		// 2 word instruction example
 		{"Sys Sleep\t250 # Comment", []string{"Sys", "Sleep", "250"}},
+		// Escaped backslash
+		// {`data "a\\"`, []string{"data", `a\\`}},
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {
