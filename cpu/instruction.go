@@ -23,7 +23,7 @@ var str2instr map[string]Instruction
 
 func init() {
 	str2instr = make(map[string]Instruction, lastInstruction)
-	for i := range lastInstruction {
+	for i := invalidInstruction + 1; i < lastInstruction; i++ {
 		str2instr[strings.ToLower(i.String())] = i
 	}
 }

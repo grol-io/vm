@@ -5,7 +5,7 @@ import "strings"
 type Syscall uint8
 
 const (
-	invalid Syscall = iota
+	invalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
 	Exit
 	Print
 	Read
@@ -20,7 +20,7 @@ var str2syscall map[string]Syscall
 
 func init() {
 	str2syscall = make(map[string]Syscall, lastSyscall)
-	for i := range lastSyscall {
+	for i := invalidSyscall + 1; i < lastSyscall; i++ {
 		str2syscall[strings.ToLower(i.String())] = i
 	}
 }

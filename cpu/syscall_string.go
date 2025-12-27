@@ -8,7 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[invalid-0]
+	_ = x[invalidSyscall-0]
 	_ = x[Exit-1]
 	_ = x[Print-2]
 	_ = x[Read-3]
@@ -16,9 +16,9 @@ func _() {
 	_ = x[lastSyscall-5]
 }
 
-const _Syscall_name = "invalidExitPrintReadSleeplastSyscall"
+const _Syscall_name = "invalidSyscallExitPrintReadSleeplastSyscall"
 
-var _Syscall_index = [...]uint8{0, 7, 11, 16, 20, 25, 36}
+var _Syscall_index = [...]uint8{0, 14, 18, 23, 27, 32, 43}
 
 func (i Syscall) String() string {
 	idx := int(i) - 0
