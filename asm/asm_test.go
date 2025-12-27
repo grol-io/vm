@@ -42,6 +42,8 @@ func TestParseLine(t *testing.T) {
 		{`data '\''`, []string{"data", "'"}},
 		// \ not special inside backticks
 		{"data `a backslash: \\`", []string{"data", "a backslash: \\"}},
+		// 2 word instruction example
+		{"Sys Sleep\t250 # Comment", []string{"Sys", "Sleep", "250"}},
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {

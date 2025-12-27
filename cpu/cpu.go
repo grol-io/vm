@@ -99,13 +99,13 @@ func (c *CPU) LoadProgram(f *os.File) error {
 
 const unknownSyscallAbortCode = 99
 
-func executeSyscall(syscall Syscall, operand int64) (int64, bool) {
+func executeSyscall(syscall Syscall, operand, accumulator int64) (int64, bool) {
 	switch syscall {
 	case Exit:
 		return operand, true
 	case Sleep:
 		time.Sleep(time.Duration(operand) * time.Millisecond)
-		return 0, false
+		return accumulator, false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}
@@ -122,7 +122,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 			v := arg >> 8
 			log.Infof("Syscall %v at PC: %d - operand: %d (%x)", callID, pc, v, v)
-			code, abort := executeSyscall(callID, v)
+			code, abort := executeSyscall(callID, v, accumulator)
 			if abort {
 				return accumulator, code
 			}
