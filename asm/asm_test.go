@@ -118,17 +118,17 @@ func TestSerializeStr8(t *testing.T) {
 			firstOp:       0x47464544434241_07, // 7 chars + length byte
 		},
 		{
-			name:          "eight bytes needs two lines",
+			name:          "eight bytes needs two words",
 			input:         "ABCDEFGH",
 			expectedLines: 2,
 		},
 		{
-			name:          "fifteen bytes needs three lines",
+			name:          "fifteen bytes needs two words",
 			input:         "ABCDEFGHIJKLMNO",
 			expectedLines: 2, // 7 in first line + 8 in second
 		},
 		{
-			name:          "16 bytes needs three lines (7 + 8 + 1)",
+			name:          "16 bytes needs three words (7 + 8 + 1)",
 			input:         "0123456789ABCDEF",
 			expectedLines: 3,
 		},
