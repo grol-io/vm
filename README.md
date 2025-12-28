@@ -24,6 +24,7 @@ Syscall:
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
   - 1: Exit with value from arg
   - 2: Sleep argument in milliseconds
+  - 3: Write writes a str8 to stdout
   - more to come
 
 It compares go, tinygo, C based VMs (and plain C loop for reference).

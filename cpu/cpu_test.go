@@ -172,3 +172,174 @@ func TestOperandRange(t *testing.T) {
 	}()
 	op.SetOperand(ImmediateData(minValue - 1))
 }
+
+func Test48BitsOperandBoundaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		operand ImmediateData
+		valid   bool
+	}{
+		{
+			name:    "minimum valid value",
+			operand: -(1 << 47),
+			valid:   true,
+		},
+		{
+			name:    "maximum valid value",
+			operand: (1 << 47) - 1,
+			valid:   true,
+		},
+		{
+			name:    "zero",
+			operand: 0,
+			valid:   true,
+		},
+		{
+			name:    "positive middle value",
+			operand: 1 << 46,
+			valid:   true,
+		},
+		{
+			name:    "negative middle value",
+			operand: -(1 << 46),
+			valid:   true,
+		},
+		{
+			name:    "small positive value",
+			operand: 42,
+			valid:   true,
+		},
+		{
+			name:    "small negative value",
+			operand: -42,
+			valid:   true,
+		},
+		{
+			name:    "one below minimum (should panic)",
+			operand: -(1 << 47) - 1,
+			valid:   false,
+		},
+		{
+			name:    "one above maximum (should panic)",
+			operand: (1 << 47),
+			valid:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var op Operation
+			if tt.valid {
+				// Should not panic
+				op = op.Set48BitsOperand(tt.operand)
+				// Test roundtrip - extract 48-bit operand from bit 16 onwards
+				got := ImmediateData(int64(op) >> 16)
+				if got != tt.operand {
+					t.Errorf("roundtrip failed: Set48BitsOperand(%d) -> extracted %d, want %d", tt.operand, got, tt.operand)
+				}
+			} else {
+				// Should panic
+				defer func() {
+					if r := recover(); r == nil {
+						t.Errorf("Set48BitsOperand(%d) did not panic, but should have", tt.operand)
+					}
+				}()
+				op.Set48BitsOperand(tt.operand)
+			}
+		})
+	}
+}
+
+func Test48BitsOperandRoundtrip(t *testing.T) {
+	// Test a range of values for roundtrip correctness
+	testValues := []ImmediateData{
+		-(1 << 47),
+		-(1 << 46),
+		-(1 << 32),
+		-(1 << 16),
+		-1000,
+		-1,
+		0,
+		1,
+		1000,
+		1 << 16,
+		1 << 32,
+		1 << 46,
+		(1 << 47) - 1,
+	}
+
+	for _, val := range testValues {
+		t.Run("", func(t *testing.T) {
+			var op Operation
+			op = op.Set48BitsOperand(val)
+			// Extract the 48-bit operand from bit 16 onwards
+			got := ImmediateData(int64(op) >> 16)
+			if got != val {
+				t.Errorf("roundtrip failed for %d: got %d", val, got)
+			}
+		})
+	}
+}
+
+func Test48BitsOperandWithOpcode(t *testing.T) {
+	// Test that 48-bit operand preserves the lower 16 bits (2-byte opcode)
+	var op Operation
+	// Set a 2-byte opcode value in lower 16 bits
+	op = Operation(0x1234)
+	op = op.Set48BitsOperand(42)
+
+	// Lower 16 bits should be preserved
+	lowerBits := uint16(op & 0xFFFF)
+	if lowerBits != 0x1234 {
+		t.Errorf("Lower 16 bits = 0x%x, want 0x1234", lowerBits)
+	}
+
+	// Extract operand from bit 16 onwards
+	operand := ImmediateData(int64(op) >> 16)
+	if operand != 42 {
+		t.Errorf("Operand = %d, want 42", operand)
+	}
+
+	// Set a different operand, lower 16 bits should remain
+	op = op.Set48BitsOperand(-100)
+	lowerBits = uint16(op & 0xFFFF)
+	if lowerBits != 0x1234 {
+		t.Errorf("Lower 16 bits = 0x%x, want 0x1234", lowerBits)
+	}
+	operand = ImmediateData(int64(op) >> 16)
+	if operand != -100 {
+		t.Errorf("Operand = %d, want -100", operand)
+	}
+}
+
+func Test48BitsOperandRange(t *testing.T) {
+	// Verify the documented range: -2^47 to 2^47-1
+	minValue := -(1 << 47)
+	maxValue := (1 << 47) - 1
+
+	t.Logf("48-bit operand range: %d to %d", minValue, maxValue)
+	t.Logf("That's -%d to %d", 1<<47, (1<<47)-1)
+
+	// Min should work
+	var op Operation
+	op = op.Set48BitsOperand(ImmediateData(minValue))
+	got := ImmediateData(int64(op) >> 16)
+	if got != ImmediateData(minValue) {
+		t.Errorf("minimum value roundtrip failed: got %d, want %d", got, minValue)
+	}
+
+	// Max should work
+	op = op.Set48BitsOperand(ImmediateData(maxValue))
+	got = ImmediateData(int64(op) >> 16)
+	if got != ImmediateData(maxValue) {
+		t.Errorf("maximum value roundtrip failed: got %d, want %d", got, maxValue)
+	}
+
+	// One below min should panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("value below minimum did not panic")
+		}
+	}()
+	op.Set48BitsOperand(ImmediateData(minValue - 1))
+}

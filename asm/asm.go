@@ -138,7 +138,7 @@ func sysCalls(op *cpu.Operation, args []string) (int, string) {
 	return 0, noLabel
 }
 
-// serialize8 serializes numbytes (<= 8) bytes of data into 1 int64.
+// serialize serializes numbytes (<= 8) bytes of data into 1 int64.
 func serialize(b []byte) cpu.Operation {
 	if len(b) == 0 || len(b) > 8 {
 		panic("unsupported number of bytes")
@@ -268,7 +268,7 @@ func emitCode(writer io.Writer, result []Line, labels map[string]cpu.ImmediateDa
 			}
 			relativePC := targetPC - cpu.ImmediateData(pc)
 			if line.Is48bit {
-				op = op.Set48bitOperand(relativePC)
+				op = op.Set48BitsOperand(relativePC)
 			} else {
 				op = op.SetOperand(relativePC)
 			}

@@ -39,7 +39,7 @@ func (op Operation) SetOperand(operand ImmediateData) Operation {
 	return (op & 0xFF) | (Operation(operand) << 8)
 }
 
-func (op Operation) Set48bitOperand(operand ImmediateData) Operation {
+func (op Operation) Set48BitsOperand(operand ImmediateData) Operation {
 	if operand > ((1<<47)-1) || operand < -(1<<47) {
 		panic(fmt.Sprintf("48-bit operand out of range: %d", operand))
 	}
