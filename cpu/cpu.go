@@ -224,7 +224,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNZ    at PC: %d, jumping to PC: %d", pc, op.OperandInt64())
+					log.Debugf("JNZ    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
@@ -232,6 +232,12 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			if Debug {
 				log.Debugf("JNZ    at PC: %d, not jumping", pc)
 			}
+		case JumpR:
+			if Debug {
+				log.Debugf("JumpR  at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+			}
+			pc += op.Operand()
+			continue
 		case LoadR:
 			offset := op.Operand()
 			// ok to panic if offset is out of bounds

@@ -118,7 +118,11 @@ void run_program(CPU *cpu) {
         continue;
       }
       break;
-    case 10: // LoadR
+    case 10: // JumpR
+      DEBUG_PRINT("JumpR %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->pc += operand;
+      continue;
+    case 11: // LoadR
       DEBUG_PRINT("LoadR  at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -126,7 +130,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator = (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       loaded value: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 11: // AddR
+    case 12: // AddR
       DEBUG_PRINT("AddR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -134,7 +138,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator += (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 12: // SubR
+    case 13: // SubR
       DEBUG_PRINT("SubR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -142,7 +146,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator -= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 13: // MulR
+    case 14: // MulR
       DEBUG_PRINT("MulR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -150,7 +154,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator *= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 14: // DivR
+    case 15: // DivR
       DEBUG_PRINT("DivR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -158,7 +162,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator /= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 15: // StoreR
+    case 16: // StoreR
       DEBUG_PRINT("StoreR at PC %" PRId64 ", offset: %" PRId64
                   ", value: %" PRId64 "\n",
                   cpu->pc, operand, cpu->accumulator);
@@ -166,7 +170,7 @@ void run_program(CPU *cpu) {
                    (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
-    case 16: // Sys
+    case 17: // Sys
     {
       uint8_t syscallid = operand & 0xFF;
       int64_t syscallarg = operand >> 8;
