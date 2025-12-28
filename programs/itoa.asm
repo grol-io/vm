@@ -1,6 +1,6 @@
 # itoa: convert the number in `num` to decimal using loops, store into a str8 word, and print it.
 # Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
-# Handles negative numbers by checking sign, negating, and adding '-' at the end.
+# Handles negative numbers by checking sign, negating, and prepending '-'.
 
     # LoadI -708901
     LoadI 12345
