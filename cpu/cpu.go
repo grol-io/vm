@@ -1,6 +1,7 @@
 package cpu
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -36,6 +37,13 @@ func (op Operation) SetOperand(operand ImmediateData) Operation {
 		panic(fmt.Sprintf("operand out of range: %d", operand))
 	}
 	return (op & 0xFF) | (Operation(operand) << 8)
+}
+
+func (op Operation) Set48BitsOperand(operand ImmediateData) Operation {
+	if operand > ((1<<47)-1) || operand < -(1<<47) {
+		panic(fmt.Sprintf("48-bit operand out of range: %d", operand))
+	}
+	return (op & 0xFFFF) | (Operation(operand) << 16)
 }
 
 type CPU struct {
@@ -99,13 +107,53 @@ func (c *CPU) LoadProgram(f *os.File) error {
 
 const unknownSyscallAbortCode = 99
 
-func executeSyscall(syscall Syscall, operand, accumulator int64) (int64, bool) {
+// sysPrint prints the str8 bytes and returns the number of bytes it did output.
+func sysPrint(out io.Writer, memory []Operation, addr ImmediateData) int64 {
+	op := memory[addr]
+	l := int64(op & 0xFF)
+	if l == 0 {
+		return 0
+	}
+	buf := bytes.Buffer{}
+	// Read up to 7 bytes from first word
+	firstChunkSize := min(l, 7)
+	for i := range firstChunkSize {
+		buf.WriteByte(byte(op >> (8 * (i + 1))))
+	}
+	// Read remaining bytes from subsequent words (8 bytes each)
+	remaining := l - firstChunkSize
+	wordIdx := addr + 1
+	for remaining > 0 {
+		op = memory[wordIdx]
+		chunkSize := min(remaining, 8)
+		for i := range chunkSize {
+			buf.WriteByte(byte(op >> (8 * i)))
+		}
+		remaining -= chunkSize
+		wordIdx++
+	}
+	n, err := out.Write(buf.Bytes())
+	if err != nil {
+		log.Errf("Failed to output str8: %v", err)
+		return -1
+	}
+	if int64(n) != l {
+		log.Errf("Failed to output all bytes: expected %d, got %d", l, n)
+		return -1
+	}
+	return l
+}
+
+func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operation, pc ImmediateData) (int64, bool) {
 	switch syscall {
 	case Exit:
 		return operand, true
 	case Sleep:
 		time.Sleep(time.Duration(operand) * time.Millisecond)
 		return accumulator, false
+	case Write:
+		addr := pc + ImmediateData(operand)
+		return sysPrint(os.Stdout, memory, addr), false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}
@@ -122,7 +170,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 			v := arg >> 8
 			log.Infof("Syscall %v at PC: %d - operand: %d (%x)", callID, pc, v, v)
-			code, abort := executeSyscall(callID, v, accumulator)
+			code, abort := executeSyscall(callID, v, accumulator, program, pc)
 			if abort {
 				return accumulator, code
 			}
