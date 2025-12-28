@@ -101,7 +101,7 @@ func TestSerializeStr8(t *testing.T) {
 			input:         "A",
 			expectedLines: 1,
 			checkFirst:    true,
-			firstOp:       0x4101, // 'A' (0x41) in first byte, length 1 in last byte
+			firstOp:       0x4101, // length 1 in byte 0, 'A' (0x41) in byte 1
 		},
 		{
 			name:          "two bytes",
