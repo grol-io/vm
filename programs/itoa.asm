@@ -3,6 +3,7 @@
 # Handles negative numbers by checking sign, negating, and prepending '-'.
 
     # LoadI -708901
+    # LoadI 0
     LoadI 12345
     StoreR num
 
@@ -28,18 +29,8 @@ negate:
 
 zero_case:
 # Special-case zero
-    LoadI 0
-    StoreR digit
-
-    LoadR buf
-    ShiftI 8
+    LoadR ascii_0
     StoreR buf
-
-    LoadR digit
-    AddR ascii_0
-    AddR buf
-    StoreR buf
-
     LoadI 1
     StoreR len
     JumpR finalize
