@@ -8,9 +8,20 @@ const (
 	invalidInstruction Instruction = iota
 	LoadI
 	AddI
+	SubI
+	MulI
+	DivI
+	ModI
+	ShiftI
+	AndI
 	JNZ
 	LoadR
 	AddR
+	SubR
+	MulR
+	DivR
+	// no ModR, ShiftR, AndR on purpose.
+
 	StoreR
 	Sys
 	lastInstruction
