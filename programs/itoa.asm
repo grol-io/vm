@@ -2,7 +2,8 @@
 # Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
 # Handles negative numbers by checking sign, negating, and adding '-' at the end.
 
-    LoadI -708901
+    #LoadI -708901
+    LoadI 12345
     StoreR num
 
     LoadI 0
@@ -15,6 +16,7 @@
     AndI 1
     StoreR negative
     JNZ negate
+    LoadR num
     JNZ digits_loop
     LoadI 1
     JNZ zero_case
