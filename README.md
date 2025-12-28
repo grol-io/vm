@@ -10,10 +10,10 @@ Virtual Machine experiment
 This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
 
 Immediate operand instructions:
-- `LoadI`, `AddI` (though they can also load the relative address of a label as value)
+- `LoadI`, `AddI`, `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI` (though they can also load the relative address of a label as value)
 
 Relative address based instructions:
-- `LoadR`, `AddR`, `StoreR`, `JNZ` (jump if not equal to 0)
+- `LoadR`, `AddR`, `SubR`, `MulR`, `DivR`, `StoreR`, `JNZ` (jump if not equal to 0)
 
 Short Data/string format:
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)

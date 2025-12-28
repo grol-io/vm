@@ -160,6 +160,7 @@ func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operat
 	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
+//nolint:gocognit,gocyclo,funlen // yeah well...
 func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
 	end := ImmediateData(len(program))
 	for pc < end {
@@ -184,6 +185,41 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			accumulator += op.OperandInt64()
 			if Debug {
 				log.Debugf("AddI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+			}
+		case SubI:
+			accumulator -= op.OperandInt64()
+			if Debug {
+				log.Debugf("SubI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+			}
+		case MulI:
+			accumulator *= op.OperandInt64()
+			if Debug {
+				log.Debugf("MulI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+			}
+		case DivI:
+			accumulator /= op.OperandInt64()
+			if Debug {
+				log.Debugf("DivI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+			}
+		case ModI:
+			accumulator %= op.OperandInt64()
+			if Debug {
+				log.Debugf("ModI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+			}
+		case ShiftI:
+			v := op.OperandInt64()
+			if v < 0 {
+				accumulator >>= -v
+			} else {
+				accumulator <<= v
+			}
+			if Debug {
+				log.Debugf("ShiftI at PC: %d, value: %d -> %d", pc, v, accumulator)
+			}
+		case AndI:
+			accumulator &= op.OperandInt64()
+			if Debug {
+				log.Debugf("AndI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
 		case JNZ:
 			if accumulator != 0 {
@@ -210,6 +246,30 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			accumulator += value
 			if Debug {
 				log.Debugf("AddR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+			}
+		case SubR:
+			offset := op.Operand()
+			// ok to panic if offset is out of bounds
+			value := int64(program[pc+offset])
+			accumulator -= value
+			if Debug {
+				log.Debugf("SubR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+			}
+		case MulR:
+			offset := op.Operand()
+			// ok to panic if offset is out of bounds
+			value := int64(program[pc+offset])
+			accumulator *= value
+			if Debug {
+				log.Debugf("MulR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+			}
+		case DivR:
+			offset := op.Operand()
+			// ok to panic if offset is out of bounds
+			value := int64(program[pc+offset])
+			accumulator /= value
+			if Debug {
+				log.Debugf("DivR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case StoreR:
 			offset := op.Operand()
