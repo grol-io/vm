@@ -44,7 +44,7 @@ typedef struct CPU {
   size_t program_size;
 } CPU;
 
-// sysPrint writes bytes from memory starting at addr to stdout
+// sys_print writes bytes from memory starting at addr to stdout
 // Returns the number of bytes written or -1 on error
 int64_t sys_print(Operation *memory, int64_t addr) {
   Operation op = memory[addr];
