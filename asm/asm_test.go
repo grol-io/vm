@@ -87,3 +87,110 @@ func TestParseLineErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestSerializeStr8(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedLines int
+		checkFirst    bool
+		firstOp       uint64 // expected first operation value
+	}{
+		{
+			name:          "single byte",
+			input:         "A",
+			expectedLines: 1,
+			checkFirst:    true,
+			firstOp:       0x4101, // 'A' (0x41) in first byte, length 1 in last byte
+		},
+		{
+			name:          "two bytes",
+			input:         "AB",
+			expectedLines: 1,
+			checkFirst:    true,
+			firstOp:       0x424102, // 'A' (0x41), 'B' (0x42), length 2
+		},
+		{
+			name:          "seven bytes fits in one line",
+			input:         "ABCDEFG",
+			expectedLines: 1,
+			checkFirst:    true,
+			firstOp:       0x47464544434241_07, // 7 chars + length byte
+		},
+		{
+			name:          "eight bytes needs two lines",
+			input:         "ABCDEFGH",
+			expectedLines: 2,
+		},
+		{
+			name:          "fifteen bytes needs three lines",
+			input:         "ABCDEFGHIJKLMNO",
+			expectedLines: 2, // 7 in first line + 8 in second
+		},
+		{
+			name:          "16 bytes needs three lines (7 + 8 + 1)",
+			input:         "0123456789ABCDEF",
+			expectedLines: 3,
+		},
+		{
+			name:          "255 bytes max",
+			input:         string(make([]byte, 255)),
+			expectedLines: 32, // 1 + (255-7)/8 = 1 + 31 = 32
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := serializeStr8([]byte(tt.input))
+			if len(result) != tt.expectedLines {
+				t.Errorf("serializeStr8(%q) returned %d lines, expected %d", tt.input, len(result), tt.expectedLines)
+			}
+			// All lines should have Data flag set
+			for i, line := range result {
+				if !line.Data {
+					t.Errorf("Line %d should have Data=true", i)
+				}
+				if line.Label != "" {
+					t.Errorf("Line %d should have empty Label", i)
+				}
+				if line.Is48bit {
+					t.Errorf("Line %d should have Is48bit=false", i)
+				}
+			}
+			// Check first line encoding
+			if tt.checkFirst && len(result) > 0 {
+				firstOp := uint64(result[0].Op)
+				if firstOp != tt.firstOp {
+					t.Errorf("First operation = 0x%x, expected 0x%x", firstOp, tt.firstOp)
+				}
+				// Verify length byte
+				lengthByte := firstOp & 0xFF
+				if lengthByte != uint64(len(tt.input)) {
+					t.Errorf("Length byte = %d, expected %d", lengthByte, len(tt.input))
+				}
+			}
+		})
+	}
+}
+
+func TestSerializeStr8Panics(t *testing.T) {
+	panicTests := []struct {
+		name  string
+		input []byte
+	}{
+		{"empty string", []byte{}},
+		{"256 bytes", make([]byte, 256)},
+		{"1000 bytes", make([]byte, 1000)},
+	}
+
+	for _, tt := range panicTests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("serializeStr8 should panic for %s", tt.name)
+				}
+			}()
+			serializeStr8(tt.input)
+		})
+	}
+}
