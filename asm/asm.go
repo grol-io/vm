@@ -218,7 +218,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		case "str8":
 			l := len(arg)
 			if l == 0 || l > 255 {
-				return log.FErrf("str8 argument too long: %d", l)
+				return log.FErrf("str8 argument out of range: %d", l)
 			}
 			ops := serializeStr8([]byte(arg))
 			result = append(result, ops...)
