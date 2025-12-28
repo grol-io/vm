@@ -4,6 +4,7 @@ package asm
 import (
 	"bufio"
 	"encoding/binary"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 type Line struct {
 	Op    cpu.Operation
 	Label string
+	Data  bool
 }
 
 func Compile(files ...string) int {
@@ -123,6 +125,30 @@ func sysCalls(op *cpu.Operation, args []string) int {
 	return 0
 }
 
+// serialize8 serializes numbytes (<= 8) bytes of data into 1 int64.
+func serialize(b []byte) cpu.Operation {
+	if len(b) == 0 || len(b) > 8 {
+		panic("unsupported number of bytes")
+	}
+	var result uint64
+	for i := len(b) - 1; i >= 0; i-- {
+		result <<= 8
+		result |= uint64(b[i])
+	}
+	return cpu.Operation(result) //nolint:gosec // no overflow, just bits shoving unsigned to signed.
+}
+
+func serializeStr8(b []byte) []Line {
+	l := len(b)
+	if l <= 7 {
+		return []Line{{
+			Op:   serialize(b)<<8 | cpu.Operation(l),
+			Data: true,
+		}}
+	}
+	panic("not implemented for longer strings yet")
+}
+
 func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
@@ -152,6 +178,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		arg := args[0]
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
+		data := true
 		switch instr {
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
@@ -160,12 +187,22 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 				return log.FErrf("Failed to parse data argument %q: %v", arg, err)
 			}
 			op = cpu.Operation(v)
+		case "str8":
+			l := len(arg)
+			if l > 255 {
+				return log.FErrf("str8 argument too long: %d", l)
+			}
+			ops := serializeStr8([]byte(arg))
+			result = append(result, ops...)
+			pc += cpu.ImmediateData(len(ops))
+			continue
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
 				return log.FErrf("Unknown instruction: %s", instr)
 			}
 			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
+			data = false
 			op = op.SetOpcode(instrEnum)
 			// Address vs immediate instructions handling
 			switch instrEnum {
@@ -184,21 +221,27 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 				op = op.SetOperand(cpu.ImmediateData(v))
 			}
 		}
-		result = append(result, Line{Op: op, Label: label})
+		result = append(result, Line{Op: op, Label: label, Data: data})
 		pc++
 	}
+	return emitCode(writer, result, labels)
+}
+
+func emitCode(writer io.Writer, result []Line, labels map[string]cpu.ImmediateData) int {
 	for pc, line := range result {
 		op := line.Op
-		switch op.Opcode() {
-		case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
-			// resolve label
-			targetPC, ok := labels[line.Label]
-			if !ok {
-				return log.FErrf("Unknown label: %s", line.Label)
+		if !line.Data {
+			switch op.Opcode() {
+			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
+				// resolve label
+				targetPC, ok := labels[line.Label]
+				if !ok {
+					return log.FErrf("Unknown label: %s", line.Label)
+				}
+				relativePC := targetPC - cpu.ImmediateData(pc)
+				op = op.SetOperand(relativePC)
+			default:
 			}
-			relativePC := targetPC - cpu.ImmediateData(pc)
-			op = op.SetOperand(relativePC)
-		default:
 		}
 		if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 			return log.FErrf("Failed to write operation: %v", err)

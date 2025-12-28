@@ -11,12 +11,13 @@ func _() {
 	_ = x[invalidSyscall-0]
 	_ = x[Exit-1]
 	_ = x[Sleep-2]
-	_ = x[lastSyscall-3]
+	_ = x[Write-3]
+	_ = x[lastSyscall-4]
 }
 
-const _Syscall_name = "invalidSyscallExitSleeplastSyscall"
+const _Syscall_name = "invalidSyscallExitSleepWritelastSyscall"
 
-var _Syscall_index = [...]uint8{0, 14, 18, 23, 34}
+var _Syscall_index = [...]uint8{0, 14, 18, 23, 28, 39}
 
 func (i Syscall) String() string {
 	idx := int(i) - 0
