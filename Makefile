@@ -35,6 +35,7 @@ CC:=gcc
 grol_cvm: Makefile cvm/cvm.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
+	./grol_cvm programs/hello.vm
 
 debug-cvm:
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
