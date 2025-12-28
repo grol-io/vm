@@ -8,6 +8,7 @@ const (
 	invalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
 	Exit
 	Sleep
+	Write
 	lastSyscall
 )
 
