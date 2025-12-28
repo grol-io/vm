@@ -101,14 +101,12 @@ func TestOperandRoundtrip(t *testing.T) {
 	}
 
 	for _, val := range testValues {
-		t.Run("", func(t *testing.T) {
-			var op Operation
-			op = op.SetOperand(val)
-			got := op.Operand()
-			if got != val {
-				t.Errorf("roundtrip failed for %d: got %d", val, got)
-			}
-		})
+		var op Operation
+		op = op.SetOperand(val)
+		got := op.Operand()
+		if got != val {
+			t.Errorf("roundtrip failed for %d: got %d", val, got)
+		}
 	}
 }
 
