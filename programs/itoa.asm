@@ -18,8 +18,7 @@
     JNZ negate
     LoadR num
     JNZ digits_loop
-    LoadI 1
-    JNZ zero_case
+    JumpR zero_case
 
 negate:
     LoadI 0
@@ -43,7 +42,7 @@ zero_case:
 
     LoadI 1
     StoreR len
-    JNZ finalize
+    JumpR finalize
 
 digits_loop:
     LoadR num
@@ -100,8 +99,7 @@ add_minus:
     AddI 1
     StoreR len
 
-    LoadI 1
-    JNZ finish_str
+    JumpR finish_str
 
 minus_sign:
     data 45
