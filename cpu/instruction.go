@@ -15,6 +15,7 @@ const (
 	ShiftI
 	AndI
 	JNZ
+	JumpR
 	LoadR
 	AddR
 	SubR
