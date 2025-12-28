@@ -8,15 +8,17 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"fortio.org/log"
 	"grol.io/vm/cpu"
 )
 
 type Line struct {
-	Op    cpu.Operation
-	Label string
-	Data  bool
+	Op      cpu.Operation
+	Label   string
+	Data    bool
+	Is48bit bool
 }
 
 func Compile(files ...string) int {
@@ -107,22 +109,33 @@ func parseLine(line string) ([]string, error) {
 	return result, nil
 }
 
-func sysCalls(op *cpu.Operation, args []string) int {
-	syscall, ok := cpu.SyscallFromString(strings.ToLower(args[0]))
+func isAddressLabel(s string) bool {
+	return unicode.IsLetter(rune(s[0]))
+}
+
+func sysCalls(op *cpu.Operation, args []string) (int, string) {
+	sysCallStr := args[0]
+	arg := args[1]
+	noLabel := ""
+	syscall, ok := cpu.SyscallFromString(strings.ToLower(sysCallStr))
 	if !ok {
-		return log.FErrf("Unknown syscall: %s", args[0])
+		return log.FErrf("Unknown syscall: %s", sysCallStr), noLabel
 	}
-	v, err := parseArg(args[1])
+	if isAddressLabel(arg) {
+		*op = op.SetOperand(cpu.ImmediateData(syscall))
+		return 0, arg
+	}
+	v, err := parseArg(arg)
 	if err != nil {
-		return log.FErrf("Failed to parse SYS argument %q: %v", args[1], err)
+		return log.FErrf("Failed to parse SYS argument %q: %v", arg, err), noLabel
 	}
 	// check if the argument is within the valid range for a syscall operand - 48 bits are left
 	// so signed range is -(1<<47) to (1<<47)-1
 	if v > (1<<47)-1 || v < -(1<<47) {
-		return log.FErrf("SYS argument %q out of range: %d %x vs %d", args[1], v, v, (1 << 47))
+		return log.FErrf("SYS argument %q out of range: %d %x vs %d", arg, v, v, (1 << 47)), noLabel
 	}
 	*op = op.SetOperand(cpu.ImmediateData(v)<<8 | cpu.ImmediateData(syscall))
-	return 0
+	return 0, noLabel
 }
 
 // serialize8 serializes numbytes (<= 8) bytes of data into 1 int64.
@@ -179,6 +192,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
 		data := true
+		is48bit := false
 		switch instr {
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
@@ -204,12 +218,14 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
 			data = false
 			op = op.SetOpcode(instrEnum)
-			// Address vs immediate instructions handling
 			switch instrEnum {
 			case cpu.Sys:
-				if failed := sysCalls(&op, args); failed != 0 {
+				var failed int
+				failed, label = sysCalls(&op, args)
+				if failed != 0 {
 					return failed
 				}
+				is48bit = true
 			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
 				// don't parse the argument, it will be resolved later, store the label
 				label = arg
@@ -221,7 +237,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 				op = op.SetOperand(cpu.ImmediateData(v))
 			}
 		}
-		result = append(result, Line{Op: op, Label: label, Data: data})
+		result = append(result, Line{Op: op, Label: label, Data: data, Is48bit: is48bit})
 		pc++
 	}
 	return emitCode(writer, result, labels)
@@ -230,17 +246,17 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 func emitCode(writer io.Writer, result []Line, labels map[string]cpu.ImmediateData) int {
 	for pc, line := range result {
 		op := line.Op
-		if !line.Data {
-			switch op.Opcode() {
-			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
-				// resolve label
-				targetPC, ok := labels[line.Label]
-				if !ok {
-					return log.FErrf("Unknown label: %s", line.Label)
-				}
-				relativePC := targetPC - cpu.ImmediateData(pc)
+		if !line.Data && line.Label != "" {
+			// resolve label
+			targetPC, ok := labels[line.Label]
+			if !ok {
+				return log.FErrf("Unknown label: %s", line.Label)
+			}
+			relativePC := targetPC - cpu.ImmediateData(pc)
+			if line.Is48bit {
+				op = op.Set48bitOperand(relativePC)
+			} else {
 				op = op.SetOperand(relativePC)
-			default:
 			}
 		}
 		if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
