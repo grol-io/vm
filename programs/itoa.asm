@@ -14,11 +14,7 @@
     ShiftI -63
     AndI 1
     StoreR negative
-
-    LoadR negative
     JNZ negate
-
-    LoadR num
     JNZ digits_loop
     LoadI 1
     JNZ zero_case
@@ -27,8 +23,6 @@ negate:
     LoadI 0
     SubR num
     StoreR num
-
-    LoadR num
     JNZ digits_loop
 
 zero_case:
