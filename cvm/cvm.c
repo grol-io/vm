@@ -79,6 +79,36 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("AddI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator += operand;
       break;
+    case 3: // SubI
+      DEBUG_PRINT("SubI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->accumulator -= operand;
+      break;
+    case 4: // MulI
+      DEBUG_PRINT("MulI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->accumulator *= operand;
+      break;
+    case 5: // DivI
+      DEBUG_PRINT("DivI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->accumulator /= operand;
+      break;
+    case 6: // ModI
+      DEBUG_PRINT("ModI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->accumulator %= operand;
+      break;
+    case 7: // ShiftI
+    {
+      int64_t shift_val = operand;
+      DEBUG_PRINT("ShiftI %" PRId64 " at PC %" PRId64 "\n", shift_val, cpu->pc);
+      if (shift_val < 0) {
+        cpu->accumulator >>= -shift_val;
+      } else {
+        cpu->accumulator <<= shift_val;
+      }
+    } break;
+    case 8: // AndI
+      DEBUG_PRINT("AndI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      cpu->accumulator &= operand;
+      break;
     case 9: // JNZ
       DEBUG_PRINT("JNZ %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       if (cpu->accumulator != 0) {
@@ -100,6 +130,30 @@ void run_program(CPU *cpu) {
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
                    (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->accumulator += (int64_t)cpu->program[cpu->pc + operand];
+      DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
+      break;
+    case 12: // SubR
+      DEBUG_PRINT("SubR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->accumulator -= (int64_t)cpu->program[cpu->pc + operand];
+      DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
+      break;
+    case 13: // MulR
+      DEBUG_PRINT("MulR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->accumulator *= (int64_t)cpu->program[cpu->pc + operand];
+      DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
+      break;
+    case 14: // DivR
+      DEBUG_PRINT("DivR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
+                  operand);
+      DEBUG_ASSERT(cpu->pc + operand >= 0 &&
+                   (size_t)(cpu->pc + operand) < cpu->program_size);
+      cpu->accumulator /= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
     case 15: // StoreR
