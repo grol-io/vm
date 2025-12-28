@@ -15,10 +15,10 @@ Immediate operand instructions:
 Relative address based instructions:
 - `LoadR`, `AddR`, `StoreR`, `JNZ` (jump if not equal to 0)
 
-Short Data/string format (upcoming):
+Short Data/string format:
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)
 - str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word, longer is chunked into 8 bytes words)
-- str16: 2 byte size (later)
+- str16: 2 byte size (upcoming)
 
 Syscall:
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
