@@ -100,7 +100,9 @@ void run_program(CPU *cpu) {
       int64_t shift_val = operand;
       DEBUG_PRINT("ShiftI %" PRId64 " at PC %" PRId64 "\n", shift_val, cpu->pc);
       if (shift_val < 0) {
-        cpu->accumulator >>= -shift_val;
+        uint64_t tmp = (uint64_t)cpu->accumulator;
+        tmp >>= (uint64_t)(-shift_val);
+        cpu->accumulator = (int64_t)tmp;
       } else {
         cpu->accumulator <<= shift_val;
       }
