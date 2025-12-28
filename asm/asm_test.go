@@ -1,11 +1,15 @@
 package asm
 
 import (
+	"bufio"
+	"errors"
+	"io"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-func TestParseLine(t *testing.T) {
+func TestParse(t *testing.T) {
 	lines := []struct {
 		input    string
 		expected []string
@@ -52,18 +56,56 @@ func TestParseLine(t *testing.T) {
 	}
 	for _, line := range lines {
 		t.Run(line.input, func(t *testing.T) {
-			result, err := parseLine(line.input)
-			if err != nil {
-				t.Fatalf("parseLine(%q) returned error: %v", line.input, err)
-			}
-			if !reflect.DeepEqual(result, line.expected) {
-				t.Errorf("parseLine(%q) = %v; want %v", line.input, result, line.expected)
+			for i := range 2 {
+				inp := line.input
+				if i == 1 {
+					inp += "\nanother line\n"
+				}
+				reader := bufio.NewReader(strings.NewReader(inp))
+				result, err := parse(reader)
+				if err != nil {
+					t.Fatalf("parse(%q) returned error: %v", inp, err)
+				}
+				if !reflect.DeepEqual(result, line.expected) {
+					t.Errorf("parse(%q) = %v; want %v", inp, result, line.expected)
+				}
 			}
 		})
 	}
 }
 
-func TestParseLineErrors(t *testing.T) {
+func TestParseMultiline(t *testing.T) {
+	// Test multi-line backtick string
+	multiLineInput := "# a comment first\n\tdata `hello\nworld\ntest`"
+	reader := bufio.NewReader(strings.NewReader(multiLineInput))
+	result, err := parse(reader)
+	if err != nil {
+		t.Fatalf("parse(%q) returned error: %v", multiLineInput, err)
+	}
+	// first the comment -> empty result
+	if len(result) != 0 {
+		t.Errorf("parse(%q) = %v; want empty result due to comment", multiLineInput, result)
+	}
+	// now parse the next line data line
+	result, err = parse(reader)
+	if err != nil {
+		t.Fatalf("parse(%q) returned error: %v", multiLineInput, err)
+	}
+	expected := []string{"data", "hello\nworld\ntest"}
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("parse(%q) = %v; want %v", multiLineInput, result, expected)
+	}
+	// now check we get eof
+	result, err = parse(reader)
+	if !errors.Is(err, io.EOF) {
+		t.Fatalf("parse(%q) returned error: %v instead of EOF", multiLineInput, err)
+	}
+	if len(result) != 0 {
+		t.Errorf("parse(%q) = %v; want empty result due to EOF", multiLineInput, result)
+	}
+}
+
+func TestParseErrors(t *testing.T) {
 	errorCases := []string{
 		`abc"d ef"`,       // quote in middle of token
 		`data abc"hello"`, // quote in middle of token
@@ -80,9 +122,16 @@ func TestParseLineErrors(t *testing.T) {
 	}
 	for _, input := range errorCases {
 		t.Run(input, func(t *testing.T) {
-			result, err := parseLine(input)
-			if err == nil {
-				t.Errorf("parseLine(%q) = %v; expected error", input, result)
+			for i := range 2 {
+				inp := input
+				if i == 1 {
+					inp += "\nanother line\n"
+				}
+				reader := bufio.NewReader(strings.NewReader(inp))
+				result, err := parse(reader)
+				if err == nil {
+					t.Errorf("parse(%q) = %v; expected error", inp, result)
+				}
 			}
 		})
 	}

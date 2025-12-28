@@ -4,6 +4,7 @@ package asm
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -42,19 +43,16 @@ func Compile(files ...string) int {
 		writer := bufio.NewWriter(out)
 		defer writer.Flush()
 		_, _ = writer.WriteString(cpu.HEADER)
-		reader := bufio.NewScanner(f)
+		reader := bufio.NewReader(f)
 		ret := compile(reader, writer)
 		if ret != 0 {
 			return ret
-		}
-		if err := reader.Err(); err != nil {
-			log.Errf("Error reading file %s: %v", file, err)
 		}
 	}
 	return 0
 }
 
-func parseLine(line string) ([]string, error) {
+func parse(reader *bufio.Reader) ([]string, error) {
 	var result []string
 	var current strings.Builder
 	inQuote := false
@@ -67,11 +65,23 @@ func parseLine(line string) ([]string, error) {
 			current.Reset()
 		}
 	}
-	for _, ch := range line {
+	var err error
+	var ch rune
+loop:
+	for {
+		ch, _, err = reader.ReadRune()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
 		switch {
+		case ch == '\n' && (!inQuote || whichQuote != '`'):
+			break loop
 		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
 			if prevRune != ' ' && prevRune != '\t' {
-				log.Errf("Unexpected quote in the middle of a token: %q", line)
+				log.Errf("Unexpected quote %q in the middle of a token; current token so far: %q", ch, current.String())
 				return nil, strconv.ErrSyntax
 			}
 			emit()
@@ -80,15 +90,17 @@ func parseLine(line string) ([]string, error) {
 			inQuote = true
 		case inQuote && ch == whichQuote && !inEscape:
 			current.WriteRune(ch)
-			s, err := strconv.Unquote(current.String())
-			if err != nil {
-				return nil, err
+			s, errUnquote := strconv.Unquote(current.String())
+			if errUnquote != nil {
+				return nil, errUnquote
 			}
 			result = append(result, s)
 			current.Reset()
 			inQuote = false
 		case ch == '#' && !inQuote:
 			emit()
+			// skip the rest of the line as a comment
+			_, _ = reader.ReadString('\n')
 			return result, nil
 		case !inQuote && (ch == ' ' || ch == '\t'):
 			emit() // collapses all whitespace
@@ -102,11 +114,14 @@ func parseLine(line string) ([]string, error) {
 		prevRune = ch
 	}
 	if inQuote {
-		log.Errf("Unterminated quote %c at the end of line: %q", whichQuote, line)
+		log.Errf("Unterminated quote %c at the end of line/file; started with: %q", whichQuote, current.String())
 		return nil, strconv.ErrSyntax
 	}
 	emit()
-	return result, nil
+	if len(result) != 0 {
+		err = nil
+	}
+	return result, err
 }
 
 func isAddressLabel(s string) bool {
@@ -176,12 +191,15 @@ func serializeStr8(b []byte) []Line {
 	return result
 }
 
-func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
+func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
 	var result []Line
-	for reader.Scan() {
-		fields, err := parseLine(reader.Text())
+	for {
+		fields, err := parse(reader)
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
 			return log.FErrf("Failed to parse line: %v", err)
 		}
@@ -200,7 +218,7 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 		args := fields[1:]
 		narg := len(args)
 		if (narg != 1 && instr != "sys") || (narg != 2 && instr == "sys") {
-			return log.FErrf("Wrong number of arguments for %s, got %d", instr, narg)
+			return log.FErrf("Wrong number of arguments for %s, got %d (%v)", instr, narg, args)
 		}
 		arg := args[0]
 		var op cpu.Operation
@@ -240,10 +258,12 @@ func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
 					return failed
 				}
 				is48bit = true
-			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
-				// don't parse the argument, it will be resolved later, store the label
-				label = arg
 			default:
+				// allow labels as arguments even for immediate operands (eg load the address into accumulator)
+				if isAddressLabel(arg) {
+					label = arg
+					break
+				}
 				v, err := parseArg(arg)
 				if err != nil {
 					return log.FErrf("Failed to parse argument %q: %v", arg, err)
