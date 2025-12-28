@@ -81,7 +81,7 @@ loop:
 			break loop
 		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
 			if prevRune != ' ' && prevRune != '\t' {
-				log.Errf("Unexpected quote in the middle of a token")
+				log.Errf("Unexpected quote %q in the middle of a token; current token so far: %q", ch, current.String())
 				return nil, strconv.ErrSyntax
 			}
 			emit()
