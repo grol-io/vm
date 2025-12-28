@@ -114,7 +114,7 @@ loop:
 		prevRune = ch
 	}
 	if inQuote {
-		log.Errf("Unterminated quote %c at the end of line/file", whichQuote)
+		log.Errf("Unterminated quote %c at the end of line/file; started with: %q", whichQuote, current.String())
 		return nil, strconv.ErrSyntax
 	}
 	emit()
