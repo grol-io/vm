@@ -2,4 +2,7 @@
     sys write msg
     sys exit 0
 msg:
-    str8 "Hello World!\n"
+    # just to test multi-line backticks but str8 "Hello\nWorld!\n" otherwise would be more readable.
+    str8 `Hello
+World!
+`
