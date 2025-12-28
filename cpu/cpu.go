@@ -107,13 +107,41 @@ func (c *CPU) LoadProgram(f *os.File) error {
 
 const unknownSyscallAbortCode = 99
 
-func sysPrint(op Operation) {
-	l := op & 0xFF
+// sysPrint prints the str8 bytes and returns the number of bytes it did output.
+func sysPrint(memory []Operation, addr ImmediateData) int64 {
+	op := memory[addr]
+	l := int64(op & 0xFF)
+	if l == 0 {
+		return 0
+	}
 	buf := bytes.Buffer{}
-	for i := range l {
+	// Read up to 7 bytes from first word
+	firstChunkSize := min(l, 7)
+	for i := range firstChunkSize {
 		buf.WriteByte(byte(op >> (8 * (i + 1))))
 	}
-	fmt.Print(buf.String())
+	// Read remaining bytes from subsequent words (8 bytes each)
+	remaining := l - firstChunkSize
+	wordIdx := addr + 1
+	for remaining > 0 {
+		op = memory[wordIdx]
+		chunkSize := min(remaining, 8)
+		for i := range chunkSize {
+			buf.WriteByte(byte(op >> (8 * i)))
+		}
+		remaining -= chunkSize
+		wordIdx++
+	}
+	n, err := fmt.Print(buf.String())
+	if err != nil {
+		log.Errf("Failed to print string: %v", err)
+		return -1
+	}
+	if int64(n) != l {
+		log.Errf("Failed to print all bytes: expected %d, got %d", l, n)
+		return -1
+	}
+	return l
 }
 
 func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operation, pc ImmediateData) (int64, bool) {
@@ -125,8 +153,7 @@ func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operat
 		return accumulator, false
 	case Write:
 		addr := pc + ImmediateData(operand)
-		sysPrint(memory[addr])
-		return accumulator, false
+		return sysPrint(memory, addr), false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}

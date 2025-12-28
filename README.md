@@ -17,7 +17,7 @@ Relative address based instructions:
 
 Short Data/string format (upcoming):
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)
-- str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word)
+- str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word, longer is chunked into 8 bytes words)
 - str16: 2 byte size (later)
 
 Syscall:

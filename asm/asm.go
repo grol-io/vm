@@ -153,13 +153,27 @@ func serialize(b []byte) cpu.Operation {
 
 func serializeStr8(b []byte) []Line {
 	l := len(b)
-	if l <= 7 {
-		return []Line{{
-			Op:   serialize(b)<<8 | cpu.Operation(l),
-			Data: true,
-		}}
+	if l == 0 || l > 255 {
+		panic("str8 can only handle strings 1-255 bytes")
 	}
-	panic("not implemented for longer strings yet")
+	var result []Line
+	// First word: up to 7 bytes of data + length byte
+	firstChunkSize := min(l, 7)
+	result = append(result, Line{
+		Op:   serialize(b[:firstChunkSize])<<8 | cpu.Operation(l),
+		Data: true,
+	})
+	// Remaining bytes in chunks of 8
+	remaining := b[firstChunkSize:]
+	for len(remaining) > 0 {
+		chunkSize := min(len(remaining), 8)
+		result = append(result, Line{
+			Op:   serialize(remaining[:chunkSize]),
+			Data: true,
+		})
+		remaining = remaining[chunkSize:]
+	}
+	return result
 }
 
 func compile(reader *bufio.Scanner, writer *bufio.Writer) int {
