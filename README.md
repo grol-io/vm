@@ -10,7 +10,7 @@ Virtual Machine experiment
 This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
 
 Immediate operand instructions:
-- `LoadI`, `AddI`
+- `LoadI`, `AddI` (though they can also load the relative address of a label as value)
 
 Relative address based instructions:
 - `LoadR`, `AddR`, `StoreR`, `JNZ` (jump if not equal to 0)

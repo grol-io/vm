@@ -258,10 +258,12 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					return failed
 				}
 				is48bit = true
-			case cpu.JNZ, cpu.LoadR, cpu.AddR, cpu.StoreR:
-				// don't parse the argument, it will be resolved later, store the label
-				label = arg
 			default:
+				// allow labels as arguments even for immediate operands (eg load the address into accumulator)
+				if isAddressLabel(arg) {
+					label = arg
+					break
+				}
 				v, err := parseArg(arg)
 				if err != nil {
 					return log.FErrf("Failed to parse argument %q: %v", arg, err)
