@@ -44,6 +44,26 @@ typedef struct CPU {
   size_t program_size;
 } CPU;
 
+// sysPrint writes bytes from memory starting at addr to stdout
+// Returns the number of bytes written or -1 on error
+int64_t sys_print(Operation *memory, int64_t addr) {
+  Operation op = memory[addr];
+  int64_t length = (int64_t)(op & 0xFF);
+  if (length == 0) {
+    return 0;
+  }
+  // All bytes are contiguous in memory after the length byte
+  char *data = ((char *)&memory[addr]) + 1;
+  ssize_t n = write(STDOUT_FILENO, data, length);
+  if (n != length) {
+    fprintf(stderr,
+            "Failed to write all bytes: expected %" PRId64 ", got %zd\n",
+            length, n);
+    return -1;
+  }
+  return length;
+}
+
 void run_program(CPU *cpu) {
   int64_t end = (int64_t)(cpu->program_size);
   while (cpu->pc < end) {
@@ -96,7 +116,7 @@ void run_program(CPU *cpu) {
       int64_t syscallarg = operand >> 8;
       switch (syscallid) {
       case 1: // Exit
-        printf("Exit Syscall (%d) at PC %" PRId64 ": %" PRId64 "\n", syscallid,
+        DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ": %" PRId64 "\n", syscallid,
                cpu->pc, syscallarg);
         // note that switching to int return and using return syscallarg; adds
         // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
@@ -109,10 +129,22 @@ void run_program(CPU *cpu) {
                   cpu->pc, syscallarg);
           exit(1);
         }
-        printf("Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
+        fprintf(stderr, "Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
                syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;
+      case 3: // Write
+      {
+        int64_t addr = cpu->pc + syscallarg;
+        DEBUG_PRINT("Write syscall at PC %" PRId64 ", addr: %" PRId64 "\n",
+                    cpu->pc, addr);
+        cpu->accumulator = sys_print(cpu->program, addr);
+        if (cpu->accumulator == -1) {
+          fprintf(stderr, "ERR: Write syscall failed at PC %" PRId64 "\n",
+                  cpu->pc);
+          exit(1);
+        }
+      } break;
       default:
         fprintf(stderr, "ERR: Unknown syscall %d at PC %" PRId64 "\n",
                 syscallid, cpu->pc);
@@ -126,7 +158,7 @@ void run_program(CPU *cpu) {
     }
     cpu->pc++;
   }
-  printf("Program finished. Accumulator: %" PRId64 "\n", cpu->accumulator);
+  fprintf(stderr, "Program finished. Accumulator: %" PRId64 "\n", cpu->accumulator);
 }
 
 #define HEADER "\x01GROL VM" // matches cpu.HEADER
@@ -175,7 +207,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   fclose(f);
-  printf("Loaded program with %zu operations\n", cpu.program_size);
+  DEBUG_PRINT("Loaded program with %zu operations\n", cpu.program_size);
   run_program(&cpu);
   free(cpu.program);
   return 0;
