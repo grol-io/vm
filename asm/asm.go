@@ -277,6 +277,9 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if err != nil {
 					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
 				}
+				if v < -128 || v > 127 {
+					return log.FErrf("IncrR immediate value out of range (-128 to 127): %d", v)
+				}
 				op = op.SetOperand(cpu.ImmediateData(v))
 				is48bit = true
 			default:
