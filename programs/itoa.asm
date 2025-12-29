@@ -29,7 +29,7 @@ negate:
 
 zero_case:
 # Special-case zero
-    LoadR ascii_0
+    LoadI '0'
     StoreR buf
     LoadI 1
     StoreR len
@@ -45,7 +45,7 @@ digits_loop:
     StoreR buf
 
     LoadR digit
-    AddR ascii_0
+    AddI '0'
     AddR buf
     StoreR buf
 
@@ -94,8 +94,6 @@ add_minus:
 
 minus_sign:
     data 45
-ascii_0:
-    data 0x30
 negative:
     data 0
 num:

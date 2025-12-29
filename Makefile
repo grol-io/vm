@@ -22,6 +22,8 @@ run: vm
 	./vm run -loglevel debug programs/hello.vm
 	./vm compile -loglevel debug programs/itoa.asm
 	./vm run -quiet programs/itoa.vm
+	./vm compile -loglevel debug programs/rune_literal.asm
+	./vm run -loglevel debug programs/rune_literal.vm
 	./vm compile -loglevel debug programs/loop.asm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 

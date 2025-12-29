@@ -31,7 +31,7 @@ func TestParse(t *testing.T) {
 		// Unicode characters
 		{`data "こんにちは"`, []string{"data", "こんにちは"}},
 		// Single quotes
-		{"data 'H'", []string{"data", "H"}},
+		{"data 'H'", []string{"data", "0x48"}},
 		// Backticks
 		{`data ` + "`Hello, World!\\n`", []string{"data", "Hello, World!\\n"}},
 		// other quotes inside a quoted string
@@ -43,14 +43,14 @@ func TestParse(t *testing.T) {
 		// \" doesn't terminate the string
 		{`data "He said, \"Hello, World!\""`, []string{"data", "He said, \"Hello, World!\""}},
 		// \' doesn't terminate the character
-		{`data '\''`, []string{"data", "'"}},
+		{`data '\''`, []string{"data", "0x27"}},
 		// \ not special inside backticks
 		{"data `a backslash: \\`", []string{"data", "a backslash: \\"}},
 		// 2 word instruction example
 		{"Sys Sleep\t250 # Comment", []string{"Sys", "Sleep", "250"}},
 		// Escaped backslash
 		{`data "a\\"`, []string{"data", `a\`}},
-		{`data '\\'`, []string{"data", `\`}},
+		{`data '\\'`, []string{"data", "0x5c"}},
 		{"data `\\`", []string{"data", `\`}},
 		{"data `\\\\`", []string{"data", `\\`}},
 	}

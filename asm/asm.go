@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -94,7 +95,13 @@ loop:
 			if errUnquote != nil {
 				return nil, errUnquote
 			}
-			result = append(result, s)
+			if whichQuote == '\'' {
+				// get the rune value
+				r := []rune(s)[0]
+				result = append(result, fmt.Sprintf("0x%x", r))
+			} else {
+				result = append(result, s)
+			}
 			current.Reset()
 			inQuote = false
 		case ch == '#' && !inQuote:
