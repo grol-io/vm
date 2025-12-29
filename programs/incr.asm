@@ -1,12 +1,10 @@
     LoadI 10
-    storeR v
+    StoreR v
 loop:
-    incrR -1 v
-    loadR v
-    jnz loop
-    incrR -42 v
-    loadR v
-end:
-    sys exit 0 # actual exit
+    IncrR -1 v
+    JNZ loop
+# Try another bigger increment than 1/-1: should yield 0-42 == -42 in accumulator
+    IncrR -42 v
+    Sys Exit 0
 v:
     data 0

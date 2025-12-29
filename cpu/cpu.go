@@ -160,7 +160,7 @@ func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operat
 	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
-//nolint:gocognit,gocyclo,funlen // yeah well...
+//nolint:gocognit,gocyclo,funlen,maintidx // yeah well...
 func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
 	end := ImmediateData(len(program))
 	for pc < end {
@@ -232,6 +232,28 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			if Debug {
 				log.Debugf("JNZ    at PC: %d, not jumping", pc)
 			}
+		case JNEG:
+			if accumulator < 0 {
+				if Debug {
+					log.Debugf("JNEG   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+				}
+				pc += op.Operand()
+				continue
+			}
+			if Debug {
+				log.Debugf("JNEG   at PC: %d, not jumping", pc)
+			}
+		case JPOS:
+			if accumulator >= 0 {
+				if Debug {
+					log.Debugf("JPOS   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+				}
+				pc += op.Operand()
+				continue
+			}
+			if Debug {
+				log.Debugf("JPOS   at PC: %d, not jumping", pc)
+			}
 		case JumpR:
 			if Debug {
 				log.Debugf("JumpR  at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
@@ -290,9 +312,11 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			offset := arg >> 8
 			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
 			// ok to panic if offset is out of bounds
-			program[pc+offset] += Operation(value)
+			oldValue := int64(program[pc+offset])
+			accumulator = oldValue + int64(value)
+			program[pc+offset] = Operation(accumulator)
 			if Debug {
-				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, program[pc+offset])
+				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)

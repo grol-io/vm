@@ -26,9 +26,9 @@ func memProfile(fname string) {
 
 func Main() int {
 	cli.CommandBeforeFlags = true
-	cli.MinArgs = 1
+	cli.MinArgs = 0 // no arg to genh
 	cli.MaxArgs = -1
-	cli.ArgsHelp = "files...\nwhere command is one of: compile, run"
+	cli.ArgsHelp = "[<files>...]\nwhere command is one of: compile, genh, run"
 	cpuProf := flag.String("profile-cpu", "", "write CPU profile to file")
 	memProf := flag.String("profile-mem", "", "write memory profile to file")
 	cli.Main()
@@ -53,6 +53,8 @@ func Main() int {
 		return asm.Compile(flag.Args()...)
 	case "run":
 		return cpu.Run(flag.Args()...)
+	case "genh":
+		return asm.GenHeader()
 	default:
 		return log.FErrf("invalid command %q", cli.Command)
 	}
