@@ -80,16 +80,12 @@ add_minus:
     ShiftI 8
     StoreR buf
 
-    LoadR minus_sign
-    AddR buf
-    StoreR buf
+    IncrR '-' buf
 
     IncrR 1 len
 
     JumpR finish_str
 
-minus_sign:
-    data 45
 negative:
     data 0
 num:
