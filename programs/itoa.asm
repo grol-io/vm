@@ -2,9 +2,9 @@
 # Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
 # Handles negative numbers by checking sign, negating, and prepending '-'.
 
-    # LoadI -708901
+    LoadI -708901
     # LoadI 0
-    LoadI 12345
+    # LoadI 12345
     StoreR num
 
     LoadI 0
