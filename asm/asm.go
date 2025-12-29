@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -94,7 +95,13 @@ loop:
 			if errUnquote != nil {
 				return nil, errUnquote
 			}
-			result = append(result, s)
+			if whichQuote == '\'' {
+				// get the rune value
+				r := []rune(s)[0]
+				result = append(result, fmt.Sprintf("0x%x", r))
+			} else {
+				result = append(result, s)
+			}
 			current.Reset()
 			inQuote = false
 		case ch == '#' && !inQuote:
@@ -191,6 +198,7 @@ func serializeStr8(b []byte) []Line {
 	return result
 }
 
+//nolint:gocognit,funlen // yes it is a full assembler...
 func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
@@ -217,8 +225,12 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		instr := strings.ToLower(first)
 		args := fields[1:]
 		narg := len(args)
-		if (narg != 1 && instr != "sys") || (narg != 2 && instr == "sys") {
-			return log.FErrf("Wrong number of arguments for %s, got %d (%v)", instr, narg, args)
+		if instr == "incrr" || instr == "sys" {
+			if narg != 2 {
+				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
+			}
+		} else if narg != 1 {
+			return log.FErrf("Expecting 1 argument for %s, got %d (%v)", instr, narg, args)
 		}
 		arg := args[0]
 		var op cpu.Operation
@@ -257,6 +269,18 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if failed != 0 {
 					return failed
 				}
+				is48bit = true
+			case cpu.IncrR:
+				// 2 arguments: value (-128 to 127) and label
+				label = args[1]
+				v, err := parseArg(args[0])
+				if err != nil {
+					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
+				}
+				if v < -128 || v > 127 {
+					return log.FErrf("IncrR immediate value out of range (-128 to 127): %d", v)
+				}
+				op = op.SetOperand(cpu.ImmediateData(v))
 				is48bit = true
 			default:
 				// allow labels as arguments even for immediate operands (eg load the address into accumulator)

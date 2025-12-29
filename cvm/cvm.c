@@ -170,14 +170,25 @@ void run_program(CPU *cpu) {
                    (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
-    case 17: // Sys
+    case 17: // IncrR
+    {
+      int8_t incrval = operand & 0xFF;
+      int64_t addr = operand >> 8;
+      DEBUG_PRINT("IncrR  at PC %" PRId64 ", offset: %" PRId64
+                  ", by value: %d\n",
+                  cpu->pc, addr, incrval);
+      DEBUG_ASSERT(cpu->pc + addr >= 0 &&
+                   (size_t)(cpu->pc + addr) < cpu->program_size);
+      cpu->program[cpu->pc + addr] += incrval;
+    } break;
+    case 18: // Sys
     {
       uint8_t syscallid = operand & 0xFF;
       int64_t syscallarg = operand >> 8;
       switch (syscallid) {
       case 1: // Exit
-        DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ": %" PRId64 "\n", syscallid,
-               cpu->pc, syscallarg);
+        DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ", accumulator: %" PRId64 ", argument: %" PRId64 "\n",
+                    syscallid, cpu->pc, cpu->accumulator, syscallarg);
         // note that switching to int return and using return syscallarg; adds
         // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
         exit(syscallarg);
@@ -189,8 +200,9 @@ void run_program(CPU *cpu) {
                   cpu->pc, syscallarg);
           exit(1);
         }
-        fprintf(stderr, "Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
-               syscallarg, cpu->pc);
+        fprintf(stderr,
+                "Sleeping for %" PRId64 " milliseconds at PC %" PRId64 "\n",
+                syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;
       case 3: // Write
@@ -218,7 +230,8 @@ void run_program(CPU *cpu) {
     }
     cpu->pc++;
   }
-  fprintf(stderr, "Program finished. Accumulator: %" PRId64 "\n", cpu->accumulator);
+  fprintf(stderr, "Program finished. Accumulator: %" PRId64 "\n",
+          cpu->accumulator);
 }
 
 #define HEADER "\x01GROL VM" // matches cpu.HEADER
