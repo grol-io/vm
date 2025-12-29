@@ -23,25 +23,25 @@ itoa: # prints accumulator as a decimal string
     LoadR num
 
 digits_loop:
-    LoadR buf
-    ShiftI 8
-    StoreR buf
-
-    LoadR num
     ModI 10
     JPOS positive_digit
-    MulI -1 # We don't just do that to the initial number because of min_int64
+      MulI -1 # We don't just do that to the initial number because of min_int64
   positive_digit:
     AddI '0'
-    AddR buf
+    StoreR digit
+
+    LoadR buf
+    ShiftI 8
+    AddR digit
     StoreR buf
     IncrR 1 len
+
     LoadR num
     DivI 10
     StoreR num
     JNZ digits_loop
 
-finalize:
+done:
     LoadR is_negative
     JNZ add_minus
     LoadR buf
@@ -64,6 +64,8 @@ add_minus:
 is_negative:
     data 0
 num:
+    data 0
+digit:
     data 0
 buf:
     data 0
