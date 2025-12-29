@@ -8,5 +8,3 @@
     Sys exit 0
 buf:
     data 0
-newline:
-    str8 "\n"

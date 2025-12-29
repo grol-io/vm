@@ -170,7 +170,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			arg := op.OperandInt64()
 			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 			v := arg >> 8
-			log.Infof("Syscall %v at PC: %d - operand: %d (%x)", callID, pc, v, v)
+			log.Infof("Syscall %v at PC: %d, accumulator: %d - operand: %d (%x)", callID, pc, accumulator, v, v)
 			code, abort := executeSyscall(callID, v, accumulator, program, pc)
 			if abort {
 				return accumulator, code
@@ -285,6 +285,15 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			}
 			// ok to panic if offset is out of bounds
 			program[pc+offset] = Operation(accumulator)
+		case IncrR:
+			arg := op.Operand()
+			offset := arg >> 8
+			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			// ok to panic if offset is out of bounds
+			program[pc+offset] += Operation(value)
+			if Debug {
+				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, program[pc+offset])
+			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)
 			return accumulator, -1

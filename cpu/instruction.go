@@ -24,6 +24,7 @@ const (
 	// no ModR, ShiftR, AndR on purpose.
 
 	StoreR
+	IncrR
 	Sys
 	lastInstruction
 )

@@ -49,9 +49,7 @@ digits_loop:
     AddR buf
     StoreR buf
 
-    LoadR len
-    AddI 1
-    StoreR len
+    IncrR 1 len
 
     LoadR num
     DivI 10
@@ -86,9 +84,7 @@ add_minus:
     AddR buf
     StoreR buf
 
-    LoadR len
-    AddI 1
-    StoreR len
+    IncrR 1 len
 
     JumpR finish_str
 
