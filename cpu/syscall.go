@@ -5,21 +5,21 @@ import "strings"
 type Syscall uint8
 
 const (
-	invalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
+	InvalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
 	Exit
 	Sleep
 	Write
-	lastSyscall
+	LastSyscall
 )
 
 //go:generate stringer -type=Syscall
-var _ = lastSyscall.String() // force compile error if go generate is missing.
+var _ = LastSyscall.String() // force compile error if go generate is missing.
 
 var str2syscall map[string]Syscall
 
 func init() {
-	str2syscall = make(map[string]Syscall, lastSyscall)
-	for i := invalidSyscall + 1; i < lastSyscall; i++ {
+	str2syscall = make(map[string]Syscall, LastSyscall)
+	for i := InvalidSyscall + 1; i < LastSyscall; i++ {
 		str2syscall[strings.ToLower(i.String())] = i
 	}
 }

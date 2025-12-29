@@ -160,7 +160,7 @@ func executeSyscall(syscall Syscall, operand, accumulator int64, memory []Operat
 	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
-//nolint:gocognit,gocyclo,funlen // yeah well...
+//nolint:gocognit,gocyclo,funlen,maintidx // yeah well...
 func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
 	end := ImmediateData(len(program))
 	for pc < end {
@@ -231,6 +231,28 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			}
 			if Debug {
 				log.Debugf("JNZ    at PC: %d, not jumping", pc)
+			}
+		case JNEG:
+			if accumulator < 0 {
+				if Debug {
+					log.Debugf("JNEG   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+				}
+				pc += op.Operand()
+				continue
+			}
+			if Debug {
+				log.Debugf("JNEG   at PC: %d, not jumping", pc)
+			}
+		case JPOS:
+			if accumulator >= 0 {
+				if Debug {
+					log.Debugf("JPOS   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+				}
+				pc += op.Operand()
+				continue
+			}
+			if Debug {
+				log.Debugf("JPOS   at PC: %d, not jumping", pc)
 			}
 		case JumpR:
 			if Debug {

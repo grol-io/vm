@@ -38,15 +38,19 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc
 
-grol_cvm: Makefile cvm/cvm.c
+cvm/cvm.h: vm
+	./vm genh > cvm/cvm.h
+
+grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 	time ./grol_cvm programs/loop.vm
 	./grol_cvm programs/hello.vm
 
-debug-cvm:
+debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
 	./grol_cvm programs/simple.vm
 	./grol_cvm programs/addr.vm
+	./grol_cvm programs/itoa.vm
 
 native: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c

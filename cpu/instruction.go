@@ -5,7 +5,7 @@ import "strings"
 type Instruction uint8
 
 const (
-	invalidInstruction Instruction = iota
+	InvalidInstruction Instruction = iota
 	LoadI
 	AddI
 	SubI
@@ -14,7 +14,9 @@ const (
 	ModI
 	ShiftI
 	AndI
-	JNZ
+	JNZ  // Jump if A != 0
+	JNEG // Jump if A < 0
+	JPOS // Jump if A >= 0
 	JumpR
 	LoadR
 	AddR
@@ -26,17 +28,17 @@ const (
 	StoreR
 	IncrR
 	Sys
-	lastInstruction
+	LastInstruction
 )
 
 //go:generate stringer -type=Instruction
-var _ = lastInstruction.String() // force compile error if go generate is missing.
+var _ = LastInstruction.String() // force compile error if go generate is missing.
 
 var str2instr map[string]Instruction
 
 func init() {
-	str2instr = make(map[string]Instruction, lastInstruction)
-	for i := invalidInstruction + 1; i < lastInstruction; i++ {
+	str2instr = make(map[string]Instruction, LastInstruction)
+	for i := InvalidInstruction + 1; i < LastInstruction; i++ {
 		str2instr[strings.ToLower(i.String())] = i
 	}
 }

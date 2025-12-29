@@ -1,73 +1,52 @@
 # itoa: convert the number in `num` to decimal using loops, store into a str8 word, and print it.
 # Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
-# Handles negative numbers by checking sign, negating, and prepending '-'.
+# Handles negative numbers including min_int64 (once we increase buf to more than 1 word/7chars).
 
-    LoadI -708901
+    # LoadI -1
+    # ShiftI 63
     # LoadI 0
     # LoadI 12345
-    StoreR num
+    LoadI -12345
 
+itoa: # prints accumulator as a decimal string
+    StoreR num
+    # clear temp storage
     LoadI 0
     StoreR buf
     StoreR len
-    StoreR negative
+    StoreR is_negative
 
     LoadR num
-    ShiftI -63
-    AndI 1
-    StoreR negative
-    JNZ negate
-    LoadR num
-    JNZ digits_loop
-    JumpR zero_case
-
-negate:
-    LoadI 0
-    SubR num
-    StoreR num
-    JNZ digits_loop
-
-zero_case:
-# Special-case zero
-    LoadI '0'
-    StoreR buf
+    JPOS digits_loop
     LoadI 1
-    StoreR len
-    JumpR finalize
+    StoreR is_negative
+    LoadR num
 
 digits_loop:
-    LoadR num
-    ModI 10
-    StoreR digit
-
     LoadR buf
     ShiftI 8
     StoreR buf
 
-    LoadR digit
+    LoadR num
+    ModI 10
+    JPOS positive_digit
+    MulI -1 # We don't just do that to the initial number because of min_int64
+  positive_digit:
     AddI '0'
     AddR buf
     StoreR buf
-
     IncrR 1 len
-
     LoadR num
     DivI 10
     StoreR num
-
-    LoadR num
     JNZ digits_loop
 
 finalize:
-    LoadR negative
+    LoadR is_negative
     JNZ add_minus
-
+    LoadR buf
 finish_str:
-    LoadR buf
     ShiftI 8
-    StoreR buf
-
-    LoadR buf
     AddR len
     StoreR buf
 
@@ -76,25 +55,21 @@ finish_str:
     Sys exit 0
 
 add_minus:
+    IncrR 1 len
     LoadR buf
     ShiftI 8
-    StoreR buf
-
-    IncrR '-' buf
-
-    IncrR 1 len
-
+    AddI '-'
     JumpR finish_str
 
-negative:
+is_negative:
     data 0
 num:
     data 0
 buf:
     data 0
-len:
     data 0
-digit:
+    data 0
+len:
     data 0
 newline:
     str8 "\n"

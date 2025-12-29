@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "cvm.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -71,32 +72,31 @@ void run_program(CPU *cpu) {
     uint8_t opcode = get_opcode(op);
     int64_t operand = get_operand(op);
     switch (opcode) {
-    case 1: // LoadI
+    case LoadI:
       DEBUG_PRINT("LoadI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator = operand;
       break;
-    case 2: // AddI
+    case AddI:
       DEBUG_PRINT("AddI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator += operand;
       break;
-    case 3: // SubI
+    case SubI:
       DEBUG_PRINT("SubI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator -= operand;
       break;
-    case 4: // MulI
+    case MulI:
       DEBUG_PRINT("MulI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator *= operand;
       break;
-    case 5: // DivI
+    case DivI:
       DEBUG_PRINT("DivI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator /= operand;
       break;
-    case 6: // ModI
+    case ModI:
       DEBUG_PRINT("ModI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator %= operand;
       break;
-    case 7: // ShiftI
-    {
+    case ShiftI: {
       int64_t shift_val = operand;
       DEBUG_PRINT("ShiftI %" PRId64 " at PC %" PRId64 "\n", shift_val, cpu->pc);
       if (shift_val < 0) {
@@ -107,22 +107,36 @@ void run_program(CPU *cpu) {
         cpu->accumulator <<= shift_val;
       }
     } break;
-    case 8: // AndI
+    case AndI:
       DEBUG_PRINT("AndI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator &= operand;
       break;
-    case 9: // JNZ
+    case JNZ:
       DEBUG_PRINT("JNZ %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       if (cpu->accumulator != 0) {
         cpu->pc += operand;
         continue;
       }
       break;
-    case 10: // JumpR
+    case JNEG:
+      DEBUG_PRINT("JNEG %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      if (cpu->accumulator < 0) {
+        cpu->pc += operand;
+        continue;
+      }
+      break;
+    case JPOS:
+      DEBUG_PRINT("JPOS %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
+      if (cpu->accumulator >= 0) {
+        cpu->pc += operand;
+        continue;
+      }
+      break;
+    case JumpR:
       DEBUG_PRINT("JumpR %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->pc += operand;
       continue;
-    case 11: // LoadR
+    case LoadR:
       DEBUG_PRINT("LoadR  at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -130,7 +144,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator = (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       loaded value: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 12: // AddR
+    case AddR:
       DEBUG_PRINT("AddR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -138,7 +152,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator += (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 13: // SubR
+    case SubR:
       DEBUG_PRINT("SubR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -146,7 +160,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator -= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 14: // MulR
+    case MulR:
       DEBUG_PRINT("MulR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -154,7 +168,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator *= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 15: // DivR
+    case DivR:
       DEBUG_PRINT("DivR   at PC %" PRId64 ", offset: %" PRId64 "\n", cpu->pc,
                   operand);
       DEBUG_ASSERT(cpu->pc + operand >= 0 &&
@@ -162,7 +176,7 @@ void run_program(CPU *cpu) {
       cpu->accumulator /= (int64_t)cpu->program[cpu->pc + operand];
       DEBUG_PRINT("       result: %" PRId64 "\n", cpu->accumulator);
       break;
-    case 16: // StoreR
+    case StoreR:
       DEBUG_PRINT("StoreR at PC %" PRId64 ", offset: %" PRId64
                   ", value: %" PRId64 "\n",
                   cpu->pc, operand, cpu->accumulator);
@@ -170,8 +184,7 @@ void run_program(CPU *cpu) {
                    (size_t)(cpu->pc + operand) < cpu->program_size);
       cpu->program[cpu->pc + operand] = (Operation)cpu->accumulator;
       break;
-    case 17: // IncrR
-    {
+    case IncrR: {
       int8_t incrval = operand & 0xFF;
       int64_t addr = operand >> 8;
       DEBUG_PRINT("IncrR  at PC %" PRId64 ", offset: %" PRId64
@@ -181,18 +194,18 @@ void run_program(CPU *cpu) {
                    (size_t)(cpu->pc + addr) < cpu->program_size);
       cpu->program[cpu->pc + addr] += incrval;
     } break;
-    case 18: // Sys
-    {
+    case Sys: {
       uint8_t syscallid = operand & 0xFF;
       int64_t syscallarg = operand >> 8;
       switch (syscallid) {
-      case 1: // Exit
-        DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ", accumulator: %" PRId64 ", argument: %" PRId64 "\n",
+      case Exit:
+        DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ", accumulator: %" PRId64
+                    ", argument: %" PRId64 "\n",
                     syscallid, cpu->pc, cpu->accumulator, syscallarg);
         // note that switching to int return and using return syscallarg; adds
         // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
         exit(syscallarg);
-      case 2: // Sleep
+      case Sleep:
         if (syscallarg < 0 || syscallarg > 1000) {
           fprintf(stderr,
                   "ERR: Sleep syscall argument out of range at PC %" PRId64
@@ -205,8 +218,7 @@ void run_program(CPU *cpu) {
                 syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;
-      case 3: // Write
-      {
+      case Write: {
         int64_t addr = cpu->pc + syscallarg;
         DEBUG_PRINT("Write syscall at PC %" PRId64 ", addr: %" PRId64 "\n",
                     cpu->pc, addr);
