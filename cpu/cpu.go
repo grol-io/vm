@@ -312,9 +312,11 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			offset := arg >> 8
 			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
 			// ok to panic if offset is out of bounds
-			program[pc+offset] += Operation(value)
+			oldValue := int64(program[pc+offset])
+			accumulator = oldValue + int64(value)
+			program[pc+offset] = Operation(accumulator)
 			if Debug {
-				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, program[pc+offset])
+				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)

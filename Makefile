@@ -50,6 +50,7 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
 	./grol_cvm programs/simple.vm
 	./grol_cvm programs/addr.vm
+	./grol_cvm programs/incr.vm
 	./grol_cvm programs/itoa.vm
 
 native: Makefile cvm/loop.c

@@ -1,10 +1,10 @@
+#include "cvm.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "cvm.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -192,7 +192,8 @@ void run_program(CPU *cpu) {
                   cpu->pc, addr, incrval);
       DEBUG_ASSERT(cpu->pc + addr >= 0 &&
                    (size_t)(cpu->pc + addr) < cpu->program_size);
-      cpu->program[cpu->pc + addr] += incrval;
+      cpu->accumulator = (int64_t)(cpu->program[cpu->pc + addr]) + incrval;
+      cpu->program[cpu->pc + addr] = (Operation)cpu->accumulator;
     } break;
     case Sys: {
       uint8_t syscallid = operand & 0xFF;
