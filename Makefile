@@ -38,7 +38,7 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc
 
-cvm/cvm.h: vm
+cvm/cvm.h: vm asm/genh.go
 	./vm genh > cvm/cvm.h
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
