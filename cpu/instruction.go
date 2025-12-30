@@ -29,10 +29,10 @@ const (
 	StoreR // *[PC + param] = A
 	IncrR  // A = *[PC + param1] + param0; *[PC + param1] = A
 
-	Call   // push PC on stack
+	Call   // push PC+1 on stack and jump to PC + param
 	Return // pop PC from stack and unwind stack by param additional entries (RET 0 if nothing was pushed)
 	Push   // push A and reserve param additional entries on stack
-	Pop    // pop A from stack
+	Pop    // pop A from stack + param additional entries
 	LoadS  // load from stack (A = *[SP - param])
 	StoreS // store to stack (*[SP - param] = A)
 	AddS   // A = A + *[SP - param]
