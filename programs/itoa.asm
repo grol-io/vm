@@ -53,7 +53,7 @@ finish_str:
 
     SysS write 3 # buf
     Call println
-    Return 5 # 4 + accumulator
+    Return 5 # Unwind Pc and 5 because of accumulator + 4 extra reserved stack entries
 
 add_minus:
     IncrS 1 4 # len
