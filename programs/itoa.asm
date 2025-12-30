@@ -9,7 +9,7 @@
     CALL itoa
     LoadI -123456
     CALL itoa
-    LoadI 123456
+    LoadI 1234567
     CALL itoa
     LoadI 0
     CALL itoa
@@ -56,7 +56,7 @@ finish_str:
     Return 5 # 4 + accumulator
 
 add_minus:
-    IncrS 4 1 # len
+    IncrS 1 4 # len
     LoadS 3 # buf
     ShiftI 8
     AddI '-'
