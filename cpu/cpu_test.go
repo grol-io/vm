@@ -347,7 +347,7 @@ func TestSysPrint(t *testing.T) {
 	tests := []struct {
 		name     string
 		memory   []Operation
-		addr     ImmediateData
+		addr     int
 		expected string
 		wantN    int64
 	}{

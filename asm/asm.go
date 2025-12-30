@@ -198,7 +198,7 @@ func serializeStr8(b []byte) []Line {
 	return result
 }
 
-//nolint:gocognit,funlen // yes it is a full assembler...
+//nolint:gocognit,funlen,gocyclo // yes it is a full assembler...
 func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
@@ -225,7 +225,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		instr := strings.ToLower(first)
 		args := fields[1:]
 		narg := len(args)
-		if instr == "incrr" || instr == "sys" {
+		if instr == "incrr" || instr == "incrs" || instr == "sys" || instr == "syss" {
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
 			}
@@ -263,15 +263,33 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			data = false
 			op = op.SetOpcode(instrEnum)
 			switch instrEnum {
-			case cpu.Sys:
+			case cpu.Sys, cpu.SysS:
 				var failed int
 				failed, label = sysCalls(&op, args)
 				if failed != 0 {
 					return failed
 				}
 				is48bit = true
+			case cpu.IncrS:
+				v1, err := parseArg(args[0])
+				if err != nil {
+					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
+				}
+				if v1 < -128 || v1 > 127 {
+					return log.FErrf("IncrS immediate value out of range (-128 to 127): %d", v1)
+				}
+				v2, err := parseArg(args[1])
+				if err != nil {
+					return log.FErrf("Failed to parse stack index argument %q: %v", args[1], err)
+				}
+				if v2 < 0 || v2 >= cpu.StackSize {
+					return log.FErrf("IncrS stack index out of range (0 to %d): %d", cpu.StackSize-1, v2)
+				}
+				op = op.SetOperand(cpu.ImmediateData(v1))
+				op = op.Set48BitsOperand(cpu.ImmediateData(v2))
+				is48bit = true
 			case cpu.IncrR:
-				// 2 arguments: value (-128 to 127) and label
+				// 2 arguments: value (-128 to 127) and label or stack index
 				label = args[1]
 				v, err := parseArg(args[0])
 				if err != nil {
