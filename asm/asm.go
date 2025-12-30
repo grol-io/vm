@@ -271,6 +271,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				}
 				is48bit = true
 			case cpu.IncrS:
+				// Increment by delta (first argument) at stack index (second argument)
 				v1, err := parseArg(args[0])
 				if err != nil {
 					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
@@ -289,7 +290,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				op = op.Set48BitsOperand(cpu.ImmediateData(v2))
 				is48bit = true
 			case cpu.IncrR:
-				// 2 arguments: value (-128 to 127) and label or stack index
+				// 2 arguments: value (-128 to 127) and label
 				label = args[1]
 				v, err := parseArg(args[0])
 				if err != nil {
