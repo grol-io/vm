@@ -21,7 +21,19 @@ enum Instruction {
   DivR,
   StoreR,
   IncrR,
+  Call,
+  Return,
+  Push,
+  Pop,
+  LoadS,
+  StoreS,
+  AddS,
+  IncrS,
+  LoadAA,
+  LoadB,
+  StoreB,
   Sys,
+  SysS,
 };
 
 enum Syscall {

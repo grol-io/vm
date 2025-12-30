@@ -62,11 +62,11 @@ tiny_vm: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 tinygo build -o tiny_vm $(TINY_OPTS) .
 	time ./tiny_vm run programs/loop.vm
 
-vm-debug: Makefile *.go */*.go $(GEN)
+debug-vm: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build -tags debug -o vm-debug .
 
-run-debug: vm-debug
-	./vm-debug run -loglevel debug programs/simple.vm
+run-debug: debug-vm
+	./vm-debug run -loglevel debug programs/itoa.vm
 
 install:
 	CGO_ENABLED=0 go install -trimpath -ldflags="-s" -tags "$(GO_BUILD_TAGS)" grol.io/vm@$(GIT_TAG)
@@ -94,7 +94,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build vm install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug_cvm
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm debug-vm
 
 show_cpu_profile:
 	-pkill pprof

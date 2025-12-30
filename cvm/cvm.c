@@ -45,9 +45,13 @@ typedef struct CPU {
   size_t program_size;
 } CPU;
 
+enum { StackSize = 256 };
+
 // sys_print writes bytes from memory starting at addr to stdout
 // Returns the number of bytes written or -1 on error
-int64_t sys_print(Operation *memory, int64_t addr) {
+// relies on the VM layout where the str8 payload is contiguous in memory
+// following the first word that stores the length in its low byte.
+int64_t sys_print(Operation *memory, int addr) {
   Operation op = memory[addr];
   int64_t length = (int64_t)(op & 0xFF);
   if (length == 0) {
@@ -67,6 +71,8 @@ int64_t sys_print(Operation *memory, int64_t addr) {
 
 void run_program(CPU *cpu) {
   int64_t end = (int64_t)(cpu->program_size);
+  Operation stack[StackSize];
+  int stack_ptr = -1;
   while (cpu->pc < end) {
     Operation op = cpu->program[cpu->pc];
     uint8_t opcode = get_opcode(op);
@@ -195,16 +201,16 @@ void run_program(CPU *cpu) {
       cpu->accumulator = (int64_t)(cpu->program[cpu->pc + addr]) + incrval;
       cpu->program[cpu->pc + addr] = (Operation)cpu->accumulator;
     } break;
-    case Sys: {
+    case Sys:
+    case SysS: {
       uint8_t syscallid = operand & 0xFF;
       int64_t syscallarg = operand >> 8;
+      int is_stack = (opcode == SysS);
       switch (syscallid) {
       case Exit:
         DEBUG_PRINT("Exit Syscall (%d) at PC %" PRId64 ", accumulator: %" PRId64
                     ", argument: %" PRId64 "\n",
                     syscallid, cpu->pc, cpu->accumulator, syscallarg);
-        // note that switching to int return and using return syscallarg; adds
-        // 1s to linux/amd64 times (2.6s->3.5s) [but not on apple silicon]
         exit(syscallarg);
       case Sleep:
         if (syscallarg < 0 || syscallarg > 1000) {
@@ -220,10 +226,13 @@ void run_program(CPU *cpu) {
         usleep(syscallarg * 1000);
         break;
       case Write: {
-        int64_t addr = cpu->pc + syscallarg;
-        DEBUG_PRINT("Write syscall at PC %" PRId64 ", addr: %" PRId64 "\n",
-                    cpu->pc, addr);
-        cpu->accumulator = sys_print(cpu->program, addr);
+        int64_t addr = is_stack ? (stack_ptr - (int)syscallarg)
+                                : (cpu->pc + syscallarg);
+        DEBUG_PRINT("Write syscall at PC %" PRId64 ", addr: %" PRId64
+                    ", from %s\n",
+                    cpu->pc, addr, is_stack ? "stack" : "program");
+        cpu->accumulator = sys_print(is_stack ? stack : cpu->program,
+                                     (int)addr);
         if (cpu->accumulator == -1) {
           fprintf(stderr, "ERR: Write syscall failed at PC %" PRId64 "\n",
                   cpu->pc);
@@ -235,6 +244,76 @@ void run_program(CPU *cpu) {
                 syscallid, cpu->pc);
         exit(1);
       }
+    } break;
+    case Call:
+      stack_ptr++;
+      stack[stack_ptr] = (Operation)(cpu->pc + 1);
+      DEBUG_PRINT("Call   at PC %" PRId64 ", jumping %+" PRId64 ", SP=%d\n",
+                  cpu->pc, operand, stack_ptr);
+      cpu->pc += operand;
+      continue;
+    case Return: {
+      int64_t extra = operand;
+      if (extra > 0) {
+        stack_ptr -= (int)extra;
+      }
+      DEBUG_PRINT("Return at PC %" PRId64 ", to %" PRId64 ", SP=%d\n",
+                  cpu->pc, (int64_t)stack[stack_ptr], stack_ptr);
+      cpu->pc = (int64_t)stack[stack_ptr];
+      stack_ptr--;
+      continue;
+    }
+    case Push: {
+      int64_t count = operand;
+      for (int64_t i = 0; i < count; i++) {
+        stack_ptr++;
+        stack[stack_ptr] = 0;
+      }
+      stack_ptr++;
+      stack[stack_ptr] = (Operation)cpu->accumulator;
+      DEBUG_PRINT("Push   at PC %" PRId64 ", value %" PRId64 ", SP=%d\n",
+                  cpu->pc, cpu->accumulator, stack_ptr);
+    } break;
+    case Pop: {
+      cpu->accumulator = (int64_t)stack[stack_ptr];
+      stack_ptr--;
+      int64_t extra = operand;
+      if (extra > 0) {
+        stack_ptr -= (int)extra;
+      }
+      DEBUG_PRINT("Pop    at PC %" PRId64 ", value %" PRId64 ", SP=%d\n",
+                  cpu->pc, cpu->accumulator, stack_ptr);
+    } break;
+    case LoadS: {
+      int offset = (int)operand;
+      cpu->accumulator = (int64_t)stack[stack_ptr - offset];
+      DEBUG_PRINT("LoadS  at PC %" PRId64 ", offset %d, value %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
+    case StoreS: {
+      int offset = (int)operand;
+      stack[stack_ptr - offset] = (Operation)cpu->accumulator;
+      DEBUG_PRINT("StoreS at PC %" PRId64 ", offset %d, value %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
+    case AddS: {
+      int offset = (int)operand;
+      cpu->accumulator += (int64_t)stack[stack_ptr - offset];
+      DEBUG_PRINT("AddS   at PC %" PRId64 ", offset %d, result %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
+    case IncrS: {
+      int64_t arg = operand;
+      int offset = (int)(arg >> 8);
+      int8_t value = (int8_t)(arg & 0xFF);
+      DEBUG_PRINT("IncrS  at PC %" PRId64 ", offset %d, by %d, SP=%d\n",
+                  cpu->pc, offset, value, stack_ptr);
+      stack[stack_ptr - offset] += (Operation)value;
+      DEBUG_PRINT("IncrS  new value %" PRId64 "\n",
+                  (int64_t)stack[stack_ptr - offset]);
     } break;
     default:
       fprintf(stderr, "ERR: Unknown opcode %d at PC %" PRId64 "\n", opcode,
