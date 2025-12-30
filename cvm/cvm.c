@@ -257,10 +257,11 @@ void run_program(CPU *cpu) {
       if (extra > 0) {
         stack_ptr -= (int)extra;
       }
+      int64_t old_pc = cpu->pc;
       cpu->pc = (int64_t)stack[stack_ptr];
       stack_ptr--;
       DEBUG_PRINT("Return at PC %" PRId64 ", to %" PRId64 ", SP=%d\n",
-                  cpu->pc, cpu->pc, stack_ptr);
+                  old_pc, cpu->pc, stack_ptr);
       continue;
     }
     case Push: {

@@ -343,10 +343,11 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			if extra > 0 {
 				stackPtr -= extra
 			}
+			oldPC := pc
 			pc = ImmediateData(stack[stackPtr])
 			stackPtr--
 			if Debug {
-				log.Debugf("Return  at PC: %d, returning to PC: %d - SP = %d %v", pc, pc, stackPtr, stack[:stackPtr+1])
+				log.Debugf("Return  at PC: %d, returning to PC: %d - SP = %d %v", oldPC, pc, stackPtr, stack[:stackPtr+1])
 			}
 			continue
 		case Push:
@@ -386,7 +387,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			accumulator += int64(stack[stackPtr-offset])
 			if Debug {
 				log.Debugf("AddS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
-					pc, offset, accumulator, stack[stackPtr-offset], stackPtr, stack[:stackPtr+1])
+					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case IncrS:
 			arg := op.Operand()

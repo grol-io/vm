@@ -27,7 +27,7 @@ const (
 	// no ModR, ShiftR, AndR on purpose.
 
 	StoreR // *[PC + param] = A
-	IncrR  // A = *[PC + param] + 1; *[PC + param] = A
+	IncrR  // A = *[PC + param1] + param0; *[PC + param1] = A
 
 	Call   // push PC on stack
 	Return // pop PC from stack and unwind stack by param additional entries (RET 0 if nothing was pushed)
@@ -36,7 +36,7 @@ const (
 	LoadS  // load from stack (A = *[SP - param])
 	StoreS // store to stack (*[SP - param] = A)
 	AddS   // A = A + *[SP - param]
-	IncrS  // A = *[SP - param] + 1; *[SP - param] = A
+	IncrS  // A = *[SP - param1] + param0; *[SP - param1] = A
 
 	LoadAA // load absolute address
 	LoadB  // byte offset from addr
