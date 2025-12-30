@@ -33,10 +33,10 @@ const (
 	Return // pop PC from stack and unwind stack by param additional entries (RET 0 if nothing was pushed)
 	Push   // push A and reserve param additional entries on stack
 	Pop    // pop A from stack
-	LoadS  // load from stack (A = *[SP + param])
-	StoreS // store to stack (*[SP + param] = A)
-	AddS   // A = A + *[SP + param]
-	IncrS  // A = *[SP + param] + 1; *[SP + param] = A
+	LoadS  // load from stack (A = *[SP - param])
+	StoreS // store to stack (*[SP - param] = A)
+	AddS   // A = A + *[SP - param]
+	IncrS  // A = *[SP - param] + 1; *[SP - param] = A
 
 	LoadAA // load absolute address
 	LoadB  // byte offset from addr
