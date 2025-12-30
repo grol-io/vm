@@ -15,6 +15,11 @@ Immediate operand instructions:
 Relative address based instructions:
 - `LoadR`, `AddR`, `SubR`, `MulR`, `DivR`, `StoreR`, `JNZ` (jump if not equal to 0), `JNEG` (jump if negative), `JPOS` (jump if positive or 0), `JumpR` (unconditional jump), `IncrR i addr` increments (or decrements if `i` is negative the value at `addr` by `i` and loads the result in the accumulator)
 
+Stack-oriented instructions let the VM manage simple call frames:
+- `Call` pushes the return address, and `Return` unwinds the stack (optionally dropping extra entries).
+- `Push`/`Pop` move the accumulator to and from the stack while reserving or discarding extra slots.
+- `LoadS`, `StoreS`, `AddS`, and `IncrS` read and write relative to the current stack pointer so stack-resident variables can be manipulated without touching memory directly, and `SysS` mirrors `Sys` but uses a stack index operand for its first argument.
+
 Short Data/string format:
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)
 - str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word, longer is chunked into 8 bytes words)
