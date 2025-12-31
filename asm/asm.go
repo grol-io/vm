@@ -272,6 +272,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			for i := range narg {
 				varmap[args[i]] = cpu.ImmediateData(i)
 			}
+			data = false
 			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)

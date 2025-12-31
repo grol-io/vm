@@ -49,7 +49,7 @@ digits_loop:
     MulS sign ; multiply by sign (-1 if negative or 1 if not)
     AddI '0'
     StoreSB buf idx ; stores digit in buf(5) at offset indicated by idx(2)
-    IncrS -1 idx ; idx/idx by -1
+    IncrS -1 idx ; decrement idx by 1 (which thus also increments the length=21-idx)
     LoadS num ; num
     DivI 10
     StoreS num ; num
