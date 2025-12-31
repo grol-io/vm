@@ -389,6 +389,27 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				log.Debugf("AddS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
+		case SubS:
+			offset := int(op.Operand())
+			accumulator -= int64(stack[stackPtr-offset])
+			if Debug {
+				log.Debugf("SubS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
+			}
+		case MulS:
+			offset := int(op.Operand())
+			accumulator *= int64(stack[stackPtr-offset])
+			if Debug {
+				log.Debugf("MulS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
+			}
+		case DivS:
+			offset := int(op.Operand())
+			accumulator /= int64(stack[stackPtr-offset])
+			if Debug {
+				log.Debugf("DivS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
+			}
 		case IncrS:
 			arg := op.Operand()
 			offset := int(arg >> 8)

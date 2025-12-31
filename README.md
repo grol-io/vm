@@ -18,7 +18,7 @@ Relative address based instructions:
 Stack-oriented instructions let the VM manage simple call frames:
 - `Call` pushes the return address, and `Return` unwinds the stack (optionally dropping extra entries).
 - `Push`/`Pop` move the accumulator to and from the stack while reserving or discarding extra slots.
-- `LoadS`, `StoreS`, `AddS`, and `IncrS` read and write relative to the current stack pointer so stack-resident variables can be manipulated without touching memory directly, and `SysS` mirrors `Sys` but uses a stack index operand for its first argument.
+- `LoadS`, `StoreS`, `AddS`, `SubS`, `MulS`, `DivS`, and `IncrS` read and write relative to the current stack pointer so stack-resident variables can be manipulated without touching memory directly, and `SysS` mirrors `Sys` but uses a stack index operand for its first argument.
 
 Short Data/string format:
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)

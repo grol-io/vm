@@ -36,6 +36,9 @@ const (
 	LoadS  // load from stack (A = *[SP - param])
 	StoreS // store to stack (*[SP - param] = A)
 	AddS   // A = A + *[SP - param]
+	SubS   // A = A - *[SP - param]
+	MulS   // A = A * *[SP - param]
+	DivS   // A = A / *[SP - param]
 	IncrS  // A = *[SP - param1] + param0; *[SP - param1] = A
 
 	LoadAA // load absolute address
