@@ -11,6 +11,11 @@ GO_BUILD_TAGS:=no_net,no_pprof
 
 #GROL_FLAGS:=-no-register
 
+itoa-test: vm grol_cvm
+	./vm compile programs/itoa.asm
+	./vm run -quiet programs/itoa.vm
+	./grol_cvm programs/itoa.vm
+
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
 	od -t x8 programs/simple.vm
@@ -38,7 +43,7 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc
 
-cvm/cvm.h: vm asm/genh.go
+cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 	./vm genh > cvm/cvm.h
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
@@ -74,7 +79,7 @@ install:
 	vm version
 
 
-test: vm unit-tests
+test: vm unit-tests itoa-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...

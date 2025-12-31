@@ -16,7 +16,7 @@
     Sys exit 0
 
 itoa: # prints accumulator as a decimal string
-    Push 4 # reserve 4 additional entries on stack: num:0 + is_negative:1, digit:2, buf:3, len:4
+    Push 6 # reserve 6 additional entries on stack: num:0 + is_negative:1, digit:2, len:3, buf:4,5,6
     JPOS digits_loop
     # else mark/remember as negative to add the minus sign at the end.
     LoadI 1
@@ -31,11 +31,11 @@ digits_loop:
     AddI '0'
     StoreS 2 # digit
 
-    LoadS 3 # buf
+    LoadS 4 # buf
     ShiftI 8
     AddS 2 # digit
-    StoreS 3  # buf
-    IncrS 1 4 # len by 1
+    StoreS 4  # buf
+    IncrS 1 3 # len by 1
 
     LoadS 0 # num
     DivI 10
@@ -45,19 +45,19 @@ digits_loop:
 done:
     LoadS 1 # is_negative
     JNZ add_minus
-    LoadS 3 # buf
+    LoadS 4 # buf
 finish_str:
     ShiftI 8
-    AddS 4 # len
-    StoreS 3 # buf
+    AddS 3 # len
+    StoreS 4 # buf
 
-    SysS write 3 # buf
+    SysS write 4 # buf
     Call println
-    Return 5 # Unwind PC and 5 because of accumulator + 4 extra reserved stack entries
+    Return 7 # Unwind PC and 7 because of accumulator + 6 extra reserved stack entries
 
 add_minus:
-    IncrS 1 4 # len
-    LoadS 3 # buf
+    IncrS 1 3 # len by 1
+    LoadS 4 # buf
     ShiftI 8
     AddI '-'
     JumpR finish_str
