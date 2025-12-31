@@ -66,4 +66,4 @@ finish_str:
     StoreSB buf idx ; first byte of str8 is the length (to write)
     LoadS idx ; byte offset to find the start of the str8
     SysS write buf
-    Return 6 ; Unwind PC and 6 because of accumulator + 5 extra reserved stack entries
+    Return; -> Ret 6 to unwind PC and 6 because of accumulator + 5 extra reserved stack entries

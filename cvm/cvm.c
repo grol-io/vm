@@ -251,7 +251,7 @@ void run_program(CPU *cpu) {
                   cpu->pc, operand, stack_ptr);
       cpu->pc += operand;
       continue;
-    case Return: {
+    case Ret: {
       int64_t extra = operand;
       if (extra > 0) {
         stack_ptr -= (int)extra;

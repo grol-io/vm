@@ -22,7 +22,7 @@ enum Instruction {
   StoreR,
   IncrR,
   Call,
-  Return,
+  Ret,
   Push,
   Pop,
   Sys,

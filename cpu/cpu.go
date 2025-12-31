@@ -339,7 +339,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			}
 			pc += op.Operand()
 			continue
-		case Return:
+		case Ret:
 			extra := int(op.OperandInt64())
 			if extra > 0 {
 				stackPtr -= extra

@@ -206,6 +206,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
 	varmap := make(map[string]cpu.ImmediateData)
+	returnN := 0
 	var result []Line
 	for {
 		fields, err := parse(reader)
@@ -230,6 +231,10 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		args := fields[1:]
 		narg := len(args)
 		switch instr {
+		case "return":
+			if narg != 0 {
+				return log.FErrf("Expecting 0 arguments for return, got %d (%v)", narg, args)
+			}
 		case "var":
 			if narg == 0 {
 				return log.FErrf("Expecting at least 1 argument for var, got none")
@@ -243,7 +248,6 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				return log.FErrf("Expecting 1 argument for %s, got %d (%v)", instr, narg, args)
 			}
 		}
-		arg := args[0]
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
 		data := true
@@ -251,29 +255,36 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		switch instr {
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
-			v, err := parseArg(arg)
+			v, err := parseArg(args[0])
 			if err != nil {
-				return log.FErrf("Failed to parse data argument %q: %v", arg, err)
+				return log.FErrf("Failed to parse data argument %q: %v", args[0], err)
 			}
 			op = cpu.Operation(v)
 		case "str8":
-			l := len(arg)
+			l := len(args[0])
 			if l == 0 || l > 255 {
 				return log.FErrf("str8 argument out of range: %d", l)
 			}
-			ops := serializeStr8([]byte(arg))
+			ops := serializeStr8([]byte(args[0]))
 			result = append(result, ops...)
 			pc += cpu.ImmediateData(len(ops))
 			continue
 		case "var":
+			data = false
 			clear(varmap)
 			op = op.SetOpcode(cpu.Push)
 			op = op.SetOperand(cpu.ImmediateData(narg - 1))
+			returnN = narg
 			for i := range narg {
 				varmap[args[i]] = cpu.ImmediateData(i)
 			}
-			data = false
 			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
+		case "return":
+			data = false
+			op = op.SetOpcode(cpu.Ret)
+			op = op.SetOperand(cpu.ImmediateData(returnN))
+			log.Debugf("Return -> Ret %d", returnN)
+			returnN = 0
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
@@ -287,8 +298,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 						args[i] = fmt.Sprintf("%d", idx)
 					}
 				}
-				arg = args[0]
 			}
+			arg := args[0]
 			data = false
 			op = op.SetOpcode(instrEnum)
 			switch instrEnum {

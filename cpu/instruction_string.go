@@ -29,7 +29,7 @@ func _() {
 	_ = x[StoreR-18]
 	_ = x[IncrR-19]
 	_ = x[Call-20]
-	_ = x[Return-21]
+	_ = x[Ret-21]
 	_ = x[Push-22]
 	_ = x[Pop-23]
 	_ = x[Sys-24]
@@ -45,9 +45,9 @@ func _() {
 	_ = x[LastInstruction-34]
 }
 
-const _Instruction_name = "InvalidInstructionLoadIAddISubIMulIDivIModIShiftIAndIJNZJNEGJPOSJumpRLoadRAddRSubRMulRDivRStoreRIncrRCallReturnPushPopSysLoadSStoreSAddSSubSMulSDivSIncrSStoreSBSysSLastInstruction"
+const _Instruction_name = "InvalidInstructionLoadIAddISubIMulIDivIModIShiftIAndIJNZJNEGJPOSJumpRLoadRAddRSubRMulRDivRStoreRIncrRCallRetPushPopSysLoadSStoreSAddSSubSMulSDivSIncrSStoreSBSysSLastInstruction"
 
-var _Instruction_index = [...]uint8{0, 18, 23, 27, 31, 35, 39, 43, 49, 53, 56, 60, 64, 69, 74, 78, 82, 86, 90, 96, 101, 105, 111, 115, 118, 121, 126, 132, 136, 140, 144, 148, 153, 160, 164, 179}
+var _Instruction_index = [...]uint8{0, 18, 23, 27, 31, 35, 39, 43, 49, 53, 56, 60, 64, 69, 74, 78, 82, 86, 90, 96, 101, 105, 108, 112, 115, 118, 123, 129, 133, 137, 141, 145, 150, 157, 161, 176}
 
 func (i Instruction) String() string {
 	idx := int(i) - 0
