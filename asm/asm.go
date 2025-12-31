@@ -107,7 +107,7 @@ loop:
 			}
 			current.Reset()
 			inQuote = false
-		case ch == '#' && !inQuote:
+		case (ch == '#' || ch == ';') && !inQuote:
 			emit()
 			// skip the rest of the line as a comment
 			_, _ = reader.ReadString('\n')
