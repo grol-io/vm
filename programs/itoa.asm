@@ -25,13 +25,13 @@
     Sys exit 0
 
 itoa: # prints accumulator as a decimal string
-    Var num sign len _ _ buf # -> Push 5 reserve 5 additional entries on stack
-    LoadI 21
-    StoreS len
+    Var num sign idx _ _ buf # -> Push 5 reserve 5 additional entries on stack
+    LoadI 21 # Maximum length + sign + \n (for numbers in the order of min_int64) including room for the length byte
+    StoreS idx
     # Add the newline
     LoadI '\n'
-    StoreSB buf len # stores newline in buf(5) at offset indicated by len(2)
-    IncrS -1 len
+    StoreSB buf idx # stores newline in buf(5) at offset indicated by idx(2)
+    IncrS -1 idx
     LoadI 1
     StoreS sign
     LoadS num
@@ -45,8 +45,8 @@ digits_loop:
     ModI 10
     MulS sign # multiply by sign (-1 if negative or 1 if not)
     AddI '0'
-    StoreSB buf len # stores digit in buf(5) at offset indicated by len(2)
-    IncrS -1 len # len/idx by -1
+    StoreSB buf idx # stores digit in buf(5) at offset indicated by idx(2)
+    IncrS -1 idx # idx/idx by -1
     LoadS num # num
     DivI 10
     StoreS num # num
@@ -55,12 +55,12 @@ done:
     LoadS sign # sign
     JPOS finish_str
     LoadI '-'
-    StoreSB buf len # stores '-' in buf(5) at offset indicated by len(2)
-    IncrS -1 len # len by -1
+    StoreSB buf idx # stores '-' in buf(5) at offset indicated by idx(2)
+    IncrS -1 idx # idx by -1
 finish_str:
     LoadI 21
-    SubS len
-    StoreSB buf len # first byte of str8 is the length (to write)
-    LoadS len # byte offset to find the start of the str8
+    SubS idx
+    StoreSB buf idx # first byte of str8 is the length (to write)
+    LoadS idx # byte offset to find the start of the str8
     SysS write buf
     Return 6 # Unwind PC and 6 because of accumulator + 5 extra reserved stack entries

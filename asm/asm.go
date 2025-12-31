@@ -232,7 +232,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		switch instr {
 		case "var":
 			if narg == 0 {
-				return log.FErrf("Expecting at least1 argument for var, got none")
+				return log.FErrf("Expecting at least 1 argument for var, got none")
 			}
 		case "incrr", "incrs", "sys", "syss", "storesb":
 			if narg != 2 {
@@ -266,6 +266,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			pc += cpu.ImmediateData(len(ops))
 			continue
 		case "var":
+			clear(varmap)
 			op = op.SetOpcode(cpu.Push)
 			op = op.SetOperand(cpu.ImmediateData(narg - 1))
 			for i := range narg {
