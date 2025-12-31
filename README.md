@@ -19,7 +19,7 @@ Stack-oriented instructions let the VM manage simple call frames:
 - `Call` pushes the return address, and `Return` unwinds the stack (optionally dropping extra entries).
 - `Push`/`Pop` move the accumulator to and from the stack while reserving or discarding extra slots.
 - `LoadS`, `StoreS`, `AddS`, `SubS`, `MulS`, `DivS`, and `IncrS` read and write relative to the current stack pointer so stack-resident variables can be manipulated without touching memory directly, and `SysS` mirrors `Sys` but uses a stack index operand for its first argument.
-- `StoreSB` stores a single byte from the accumulator into a stack-resident buffer: the first operand specify the base stack offset of the target word span, while 2nd operand indicates a stack slot containing the byte offset (which can be more than 8). The handler computes the word/bit position and patches the selected byte in place. It is handy for building packed `str8` buffers on the stack (see [programs/itoa.asm](programs/itoa.asm)).
+- `StoreSB` stores a single byte from the accumulator into a stack-resident buffer: the first operand specifies the base stack offset of the target word span, while 2nd operand indicates a stack slot containing the byte offset (which can be more than 8). The handler computes the word/bit position and patches the selected byte in place. It is handy for building packed `str8` buffers on the stack (see [programs/itoa.asm](programs/itoa.asm)).
 
 Short Data/string format:
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)

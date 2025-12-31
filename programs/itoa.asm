@@ -66,5 +66,5 @@ finish_str:
 add_minus:
     LoadI '-'
     StoreSB 5 2 # stores '-' in buf(5) at offset indicated by len(2)
-    IncrS -1 2 # len by 1
+    IncrS -1 2 # len by -1
     JumpR finish_str
