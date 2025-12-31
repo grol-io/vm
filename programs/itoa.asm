@@ -2,21 +2,37 @@
 # Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
 # Handles negative numbers including min_int64 (once we increase buf to more than 1 word/7chars).
 
+# Simple case to debug:
+#    LoadI -47
+#    CALL itoa
+#    Sys Exit 0 # for now to shorten the current debug
+# Rest/normal tests:
+
     LoadI -1
-    ShiftI 63 # -9223372036854775808 will be truncated to 7 characters for now.
+    ShiftI 63 # -9223372036854775808
     CALL itoa
+
     LoadI 7890
     CALL itoa
     LoadI -123456
     CALL itoa
     LoadI 1234567
     CALL itoa
+    LoadI 1234567890
+    CALL itoa
     LoadI 0
     CALL itoa
     Sys exit 0
 
 itoa: # prints accumulator as a decimal string
-    Push 6 # reserve 6 additional entries on stack: num:0 + is_negative:1, digit:2, len:3, buf:4,5,6
+    Push 5 # reserve 5 additional entries on stack: num:0 + is_negative:1, len/idx:2, buf:3,4,5
+    LoadI 21
+    StoreS 2 # len
+    # Add the newline
+    LoadI '\n'
+    StoreSB 5 2 # stores newline in buf(5) at offset indicated by len(2)
+    IncrS -1 2 # len/idx by -1
+    LoadS 0 # num
     JPOS digits_loop
     # else mark/remember as negative to add the minus sign at the end.
     LoadI 1
@@ -29,14 +45,8 @@ digits_loop:
       MulI -1 # We don't just do that to the initial number because of min_int64
   positive_digit:
     AddI '0'
-    StoreS 2 # digit
-
-    LoadS 4 # buf
-    ShiftI 8
-    AddS 2 # digit
-    StoreS 4  # buf
-    IncrS 1 3 # len by 1
-
+    StoreSB 5 2 # stores digit in buf(5) at offset indicated by len(2)
+    IncrS -1 2 # len/idx by -1
     LoadS 0 # num
     DivI 10
     StoreS 0 # num
@@ -45,25 +55,16 @@ digits_loop:
 done:
     LoadS 1 # is_negative
     JNZ add_minus
-    LoadS 4 # buf
 finish_str:
-    ShiftI 8
-    AddS 3 # len
-    StoreS 4 # buf
-
-    SysS write 4 # buf
-    Call println
-    Return 7 # Unwind PC and 7 because of accumulator + 6 extra reserved stack entries
+    LoadI 21
+    SubS 2 # len
+    StoreSB 5 2 # store at buf(5) with byte offset indicated by len(2)
+    LoadS 2 # len offset
+    SysS write 5 # buf
+    Return 6 # Unwind PC and 6 because of accumulator + 5 extra reserved stack entries
 
 add_minus:
-    IncrS 1 3 # len by 1
-    LoadS 4 # buf
-    ShiftI 8
-    AddI '-'
+    LoadI '-'
+    StoreSB 5 2 # stores '-' in buf(5) at offset indicated by len(2)
+    IncrS -1 2 # len by 1
     JumpR finish_str
-
-println:
-    Sys write newline
-    Return 0
-newline:
-    str8 "\n"

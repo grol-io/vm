@@ -228,7 +228,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		instr := strings.ToLower(first)
 		args := fields[1:]
 		narg := len(args)
-		if instr == "incrr" || instr == "incrs" || instr == "sys" || instr == "syss" {
+		if instr == "incrr" || instr == "incrs" || instr == "sys" || instr == "syss" || instr == "storesb" {
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
 			}
@@ -272,6 +272,25 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if failed != 0 {
 					return failed
 				}
+				is48bit = true
+			case cpu.StoreSB:
+				// Store byte at stack index (first argument) with byte offset from stack index (second argument)
+				v1, err := parseArg(args[0])
+				if err != nil {
+					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
+				}
+				if v1 < 0 || v1 >= cpu.StackSize {
+					return log.FErrf("StoreSB stack base out of range (0 to %d): %d", cpu.StackSize-1, v1)
+				}
+				v2, err := parseArg(args[1])
+				if err != nil {
+					return log.FErrf("Failed to parse stack index argument %q: %v", args[1], err)
+				}
+				if v2 < 0 || v2 >= cpu.StackSize {
+					return log.FErrf("StoreSB byte offset stack index out of range (0 to %d): %d", cpu.StackSize-1, v2)
+				}
+				op = op.SetOperand(cpu.ImmediateData(v2))
+				op = op.Set48BitsOperand(cpu.ImmediateData(v1))
 				is48bit = true
 			case cpu.IncrS:
 				// Increment by delta (first argument) at stack index (second argument)

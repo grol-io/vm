@@ -39,17 +39,15 @@ func _() {
 	_ = x[MulS-28]
 	_ = x[DivS-29]
 	_ = x[IncrS-30]
-	_ = x[LoadAA-31]
-	_ = x[LoadB-32]
-	_ = x[StoreB-33]
-	_ = x[Sys-34]
-	_ = x[SysS-35]
-	_ = x[LastInstruction-36]
+	_ = x[StoreSB-31]
+	_ = x[Sys-32]
+	_ = x[SysS-33]
+	_ = x[LastInstruction-34]
 }
 
-const _Instruction_name = "InvalidInstructionLoadIAddISubIMulIDivIModIShiftIAndIJNZJNEGJPOSJumpRLoadRAddRSubRMulRDivRStoreRIncrRCallReturnPushPopLoadSStoreSAddSSubSMulSDivSIncrSLoadAALoadBStoreBSysSysSLastInstruction"
+const _Instruction_name = "InvalidInstructionLoadIAddISubIMulIDivIModIShiftIAndIJNZJNEGJPOSJumpRLoadRAddRSubRMulRDivRStoreRIncrRCallReturnPushPopLoadSStoreSAddSSubSMulSDivSIncrSStoreSBSysSysSLastInstruction"
 
-var _Instruction_index = [...]uint8{0, 18, 23, 27, 31, 35, 39, 43, 49, 53, 56, 60, 64, 69, 74, 78, 82, 86, 90, 96, 101, 105, 111, 115, 118, 123, 129, 133, 137, 141, 145, 150, 156, 161, 167, 170, 174, 189}
+var _Instruction_index = [...]uint8{0, 18, 23, 27, 31, 35, 39, 43, 49, 53, 56, 60, 64, 69, 74, 78, 82, 86, 90, 96, 101, 105, 111, 115, 118, 123, 129, 133, 137, 141, 145, 150, 157, 160, 164, 179}
 
 func (i Instruction) String() string {
 	idx := int(i) - 0
