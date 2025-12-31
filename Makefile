@@ -48,8 +48,6 @@ cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
-	time ./grol_cvm programs/loop.vm
-	./grol_cvm programs/hello.vm
 
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
@@ -67,10 +65,10 @@ tiny_vm: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 tinygo build -o tiny_vm $(TINY_OPTS) .
 	time ./tiny_vm run programs/loop.vm
 
-debug-vm: Makefile *.go */*.go $(GEN)
+vm-debug: Makefile *.go */*.go $(GEN)
 	CGO_ENABLED=0 go build -tags debug -o vm-debug .
 
-run-debug: debug-vm
+run-debug: vm-debug
 	./vm-debug run -loglevel debug programs/itoa.vm
 
 install:
@@ -98,8 +96,8 @@ cpu/instruction_string.go: cpu/instruction.go
 cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
-.PHONY: all lint generate test clean run build vm install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm debug-vm
+.PHONY: all lint generate test clean run build install unit-tests
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm
 
 show_cpu_profile:
 	-pkill pprof
