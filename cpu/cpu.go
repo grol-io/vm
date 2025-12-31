@@ -108,15 +108,16 @@ func (c *CPU) LoadProgram(f *os.File) error {
 const unknownSyscallAbortCode = 99
 
 // sysPrint prints the str8 bytes and returns the number of bytes it did output.
-func sysPrint(out io.Writer, memory []Operation, addr int) int64 {
+func sysPrint(out io.Writer, memory []Operation, addr, offset int) int64 {
 	op := memory[addr]
-	l := int64(op & 0xFF)
+	op >>= (offset * 8)
+	l := int(op & 0xFF)
 	if l == 0 {
 		return 0
 	}
 	buf := bytes.Buffer{}
 	// Read up to 7 bytes from first word
-	firstChunkSize := min(l, 7)
+	firstChunkSize := min(l, 7-offset)
 	for i := range firstChunkSize {
 		buf.WriteByte(byte(op >> (8 * (i + 1))))
 	}
@@ -137,11 +138,11 @@ func sysPrint(out io.Writer, memory []Operation, addr int) int64 {
 		log.Errf("Failed to output str8: %v", err)
 		return -1
 	}
-	if int64(n) != l {
+	if n != l {
 		log.Errf("Failed to output all bytes: expected %d, got %d", l, n)
 		return -1
 	}
-	return l
+	return int64(l)
 }
 
 func executeSyscall(syscall Syscall, operand, accumulator int64,
@@ -156,11 +157,11 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 		return accumulator, false
 	case Write:
 		if isStack {
-			addr := stackPtr - int(operand)
-			return sysPrint(os.Stdout, stack, addr), false
+			addr := stackPtr - int(operand) + int(accumulator)/8
+			return sysPrint(os.Stdout, stack, addr, int(accumulator%8)), false
 		}
 		addr := int64(pc) + operand
-		return sysPrint(os.Stdout, memory, int(addr)), false
+		return sysPrint(os.Stdout, memory, int(addr), 0), false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}
@@ -190,32 +191,32 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {
-				log.Debugf("LoadI  at PC: %d, value: %d", pc, accumulator)
+				log.Debugf("LoadI   at PC: %d, value: %d", pc, accumulator)
 			}
 		case AddI:
 			accumulator += op.OperandInt64()
 			if Debug {
-				log.Debugf("AddI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("AddI    at PC: %d, value: %d -> %d (%x)", pc, op.OperandInt64(), accumulator, accumulator)
 			}
 		case SubI:
 			accumulator -= op.OperandInt64()
 			if Debug {
-				log.Debugf("SubI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("SubI    at PC: %d, value: %d -> %d (%x)", pc, op.OperandInt64(), accumulator, accumulator)
 			}
 		case MulI:
 			accumulator *= op.OperandInt64()
 			if Debug {
-				log.Debugf("MulI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("MulI    at PC: %d, value: %d -> %d (%x)", pc, op.OperandInt64(), accumulator, accumulator)
 			}
 		case DivI:
 			accumulator /= op.OperandInt64()
 			if Debug {
-				log.Debugf("DivI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("DivI    at PC: %d, value: %d -> %d (%x)", pc, op.OperandInt64(), accumulator, accumulator)
 			}
 		case ModI:
 			accumulator %= op.OperandInt64()
 			if Debug {
-				log.Debugf("ModI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("ModI    at PC: %d, value: %d -> %d (%x)", pc, op.OperandInt64(), accumulator, accumulator)
 			}
 		case ShiftI:
 			v := op.OperandInt64()
@@ -225,49 +226,49 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				accumulator <<= v
 			}
 			if Debug {
-				log.Debugf("ShiftI at PC: %d, value: %d -> %d", pc, v, accumulator)
+				log.Debugf("ShiftI  at PC: %d, value: %d -> %d", pc, v, accumulator)
 			}
 		case AndI:
 			accumulator &= op.OperandInt64()
 			if Debug {
-				log.Debugf("AndI   at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
+				log.Debugf("AndI    at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
 		case JNZ:
 			if accumulator != 0 {
 				if Debug {
-					log.Debugf("JNZ    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JNZ     at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JNZ    at PC: %d, not jumping", pc)
+				log.Debugf("JNZ     at PC: %d, not jumping", pc)
 			}
 		case JNEG:
 			if accumulator < 0 {
 				if Debug {
-					log.Debugf("JNEG   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JNEG    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JNEG   at PC: %d, not jumping", pc)
+				log.Debugf("JNEG    at PC: %d, not jumping", pc)
 			}
 		case JPOS:
 			if accumulator >= 0 {
 				if Debug {
-					log.Debugf("JPOS   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JPOS    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
 				}
 				pc += op.Operand()
 				continue
 			}
 			if Debug {
-				log.Debugf("JPOS   at PC: %d, not jumping", pc)
+				log.Debugf("JPOS    at PC: %d, not jumping", pc)
 			}
 		case JumpR:
 			if Debug {
-				log.Debugf("JumpR  at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+				log.Debugf("JumpR   at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
 			}
 			pc += op.Operand()
 			continue
@@ -276,7 +277,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			// ok to panic if offset is out of bounds
 			accumulator = int64(program[pc+offset])
 			if Debug {
-				log.Debugf("LoadR  at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
+				log.Debugf("LoadR   at PC: %d, offset: %d, value: %d", pc, offset, accumulator)
 			}
 		case AddR:
 			offset := op.Operand()
@@ -284,7 +285,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			value := int64(program[pc+offset])
 			accumulator += value
 			if Debug {
-				log.Debugf("AddR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("AddR    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case SubR:
 			offset := op.Operand()
@@ -292,7 +293,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			value := int64(program[pc+offset])
 			accumulator -= value
 			if Debug {
-				log.Debugf("SubR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("SubR    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case MulR:
 			offset := op.Operand()
@@ -300,7 +301,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			value := int64(program[pc+offset])
 			accumulator *= value
 			if Debug {
-				log.Debugf("MulR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("MulR    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case DivR:
 			offset := op.Operand()
@@ -308,13 +309,13 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			value := int64(program[pc+offset])
 			accumulator /= value
 			if Debug {
-				log.Debugf("DivR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("DivR    at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		case StoreR:
 			offset := op.Operand()
 			if Debug {
 				oldValue := int64(program[pc+offset]) // may panic if offset is out of bounds, that's fine
-				log.Debugf("StoreR at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
+				log.Debugf("StoreR  at PC: %d, offset: %d, old value: %d, new value: %d", pc, offset, oldValue, accumulator)
 			}
 			// ok to panic if offset is out of bounds
 			program[pc+offset] = Operation(accumulator)
@@ -327,14 +328,14 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			accumulator = oldValue + int64(value)
 			program[pc+offset] = Operation(accumulator)
 			if Debug {
-				log.Debugf("IncrR  at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
+				log.Debugf("IncrR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
 		// panic / oob in stack access is fine (no checks outside of go's runtime)
 		case Call:
 			stackPtr++
 			stack[stackPtr] = Operation(pc + 1)
 			if Debug {
-				log.Debugf("Call   at PC: %d, jumping to PC: +%d, SP = %d %v", pc, op.OperandInt64(), stackPtr, stack[:stackPtr+1])
+				log.Debugf("Call    at PC: %d, jumping to PC: +%d, SP = %d %v", pc, op.OperandInt64(), stackPtr, stack[:stackPtr+1])
 			}
 			pc += op.Operand()
 			continue
@@ -347,7 +348,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			pc = ImmediateData(stack[stackPtr])
 			stackPtr--
 			if Debug {
-				log.Debugf("Return  at PC: %d, returning to PC: %d - SP = %d %v", oldPC, pc, stackPtr, stack[:stackPtr+1])
+				log.Debugf("Return   at PC: %d, returning to PC: %d - SP = %d %v", oldPC, pc, stackPtr, stack[:stackPtr+1])
 			}
 			continue
 		case Push:
@@ -358,7 +359,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			stackPtr++
 			stack[stackPtr] = Operation(accumulator) //nolint:gosec // gosec smoking crack again?
 			if Debug {
-				log.Debugf("Push   at PC: %d, value: %d - SP = %d %v", pc, accumulator, stackPtr, stack[:stackPtr+1])
+				log.Debugf("Push    at PC: %d, value: %d - SP = %d %v", pc, accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case Pop:
 			accumulator = int64(stack[stackPtr])
@@ -368,59 +369,71 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				stackPtr -= extra
 			}
 			if Debug {
-				log.Debugf("Pop    at PC: %d, value: %d - SP = %d %v", pc, accumulator, stackPtr, stack[:stackPtr+1])
+				log.Debugf("Pop     at PC: %d, value: %d - SP = %d %v", pc, accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case LoadS:
 			offset := int(op.Operand())
 			accumulator = int64(stack[stackPtr-offset])
 			if Debug {
-				log.Debugf("LoadS  at PC: %d, offset: %d, value: %d - SP = %d %v", pc, offset, accumulator, stackPtr, stack[:stackPtr+1])
+				log.Debugf("LoadS   at PC: %d, offset: %d, value: %d - SP = %d %v", pc, offset, accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case StoreS:
 			offset := int(op.Operand())
 			stack[stackPtr-offset] = Operation(accumulator)
 			if Debug {
-				log.Debugf("StoreS at PC: %d, offset: %d, value: %d - SP = %d %v", pc, offset, accumulator, stackPtr, stack[:stackPtr+1])
+				log.Debugf("StoreS  at PC: %d, offset: %d, value: %d - SP = %d %v", pc, offset, accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case AddS:
 			offset := int(op.Operand())
 			accumulator += int64(stack[stackPtr-offset])
 			if Debug {
-				log.Debugf("AddS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+				log.Debugf("AddS    at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case SubS:
 			offset := int(op.Operand())
 			accumulator -= int64(stack[stackPtr-offset])
 			if Debug {
-				log.Debugf("SubS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+				log.Debugf("SubS    at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case MulS:
 			offset := int(op.Operand())
 			accumulator *= int64(stack[stackPtr-offset])
 			if Debug {
-				log.Debugf("MulS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+				log.Debugf("MulS    at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case DivS:
 			offset := int(op.Operand())
 			accumulator /= int64(stack[stackPtr-offset])
 			if Debug {
-				log.Debugf("DivS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+				log.Debugf("DivS    at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case IncrS:
 			arg := op.Operand()
 			offset := int(arg >> 8)
 			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
-			if Debug {
-				log.Debugf("IncrS  at PC: %d, offset: %d, value: %d - SP = %d %v", pc, offset, value, stackPtr, stack[:stackPtr+1])
-			}
 			stack[stackPtr-offset] += Operation(value)
 			if Debug {
-				log.Debugf("IncrS  at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
+				log.Debugf("IncrS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, value, stack[stackPtr-offset], stackPtr, stack[:stackPtr+1])
+			}
+		case StoreSB:
+			arg := op.Operand()
+			offset := int(arg >> 8)              // base offset (highest stack offset in the span)
+			bytesStackIndex := uint8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			bytesOffset := int(stack[stackPtr-int(bytesStackIndex)])
+			wordOffset := bytesOffset / 8
+			oldValue := stack[stackPtr-offset+wordOffset]
+			innerOffsetBits := (bytesOffset % 8) * 8
+			newValue := (oldValue & ^(0xff << innerOffsetBits)) | (Operation(accumulator&0xff) << innerOffsetBits)
+			stack[stackPtr-offset+wordOffset] = newValue
+			if Debug {
+				log.Debugf("StoreSB at PC: %d, baseOffset: %d, bytesStackIndex: %d, bytesOffset: %d,"+
+					" oldValue: %x -> newValue: %x - SP = %d %x",
+					pc, offset, bytesStackIndex, bytesOffset, oldValue, newValue, stackPtr, stack[:stackPtr+1])
 			}
 		default:
 			log.Errf("unknown instruction: %v at PC: %d (%x)", op.Opcode(), pc, op)

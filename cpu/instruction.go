@@ -41,9 +41,9 @@ const (
 	DivS   // A = A / *[SP - param]
 	IncrS  // A = *[SP - param1] + param0; *[SP - param1] = A
 
-	LoadAA // load absolute address
-	LoadB  // byte offset from addr
-	StoreB // store byte at addr
+	// LoadSB  // load byte from stack with param0 = base, param1 = byte offset.
+
+	StoreSB // store byte to stack with param0 = stack base, param1 = stack indicating byte offset
 
 	Sys  // syscall with immediate or relative address operand
 	SysS // syscall with stack index operand

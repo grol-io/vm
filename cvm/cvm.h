@@ -32,9 +32,7 @@ enum Instruction {
   MulS,
   DivS,
   IncrS,
-  LoadAA,
-  LoadB,
-  StoreB,
+  StoreSB,
   Sys,
   SysS,
 };

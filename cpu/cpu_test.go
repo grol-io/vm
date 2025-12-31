@@ -350,6 +350,7 @@ func TestSysPrint(t *testing.T) {
 		addr     int
 		expected string
 		wantN    int64
+		offset   int
 	}{
 		{
 			name: "single byte string",
@@ -384,6 +385,16 @@ func TestSysPrint(t *testing.T) {
 			addr:     0,
 			expected: "Hi!",
 			wantN:    3,
+		},
+		{
+			name: "three byte string at 3 byte offset",
+			memory: []Operation{
+				Operation(0x21694803_00_00_00),
+			},
+			addr:     0,
+			expected: "Hi!",
+			wantN:    3,
+			offset:   3,
 		},
 		{
 			name: "7 byte string (fits in first word)",
@@ -457,7 +468,7 @@ func TestSysPrint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			n := sysPrint(&buf, tt.memory, tt.addr)
+			n := sysPrint(&buf, tt.memory, tt.addr, tt.offset)
 			if n != tt.wantN {
 				t.Errorf("sysPrint() returned %d, want %d", n, tt.wantN)
 			}
