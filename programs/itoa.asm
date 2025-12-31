@@ -25,42 +25,42 @@
     Sys exit 0
 
 itoa: # prints accumulator as a decimal string
-    Push 5 # reserve 5 additional entries on stack: num:0 + sign:1, len/idx:2, buf:3,4,5
+    Var num sign len _ _ buf # -> Push 5 reserve 5 additional entries on stack
     LoadI 21
-    StoreS 2 # len
+    StoreS len
     # Add the newline
     LoadI '\n'
-    StoreSB 5 2 # stores newline in buf(5) at offset indicated by len(2)
-    IncrS -1 2 # len/idx by -1
+    StoreSB buf len # stores newline in buf(5) at offset indicated by len(2)
+    IncrS -1 len
     LoadI 1
-    StoreS 1 # sign
-    LoadS 0 # num
+    StoreS sign
+    LoadS num
     JPOS digits_loop
     # else mark/remember as negative to add the minus sign at the end and multiply by -1 each digit.
     LoadI -1
-    StoreS 1 # sign
-    LoadS 0 # num
+    StoreS sign
+    LoadS num
 
 digits_loop:
     ModI 10
-    MulS 1 # multiply by sign (-1 if negative or 1 if not)
+    MulS sign # multiply by sign (-1 if negative or 1 if not)
     AddI '0'
-    StoreSB 5 2 # stores digit in buf(5) at offset indicated by len(2)
-    IncrS -1 2 # len/idx by -1
-    LoadS 0 # num
+    StoreSB buf len # stores digit in buf(5) at offset indicated by len(2)
+    IncrS -1 len # len/idx by -1
+    LoadS num # num
     DivI 10
-    StoreS 0 # num
+    StoreS num # num
     JNZ digits_loop
 done:
-    LoadS 1 # sign
+    LoadS sign # sign
     JPOS finish_str
     LoadI '-'
-    StoreSB 5 2 # stores '-' in buf(5) at offset indicated by len(2)
-    IncrS -1 2 # len by -1
+    StoreSB buf len # stores '-' in buf(5) at offset indicated by len(2)
+    IncrS -1 len # len by -1
 finish_str:
     LoadI 21
-    SubS 2 # len
-    StoreSB 5 2 # store at buf(5) with byte offset indicated by len(2)
-    LoadS 2 # len offset
-    SysS write 5 # buf
+    SubS len
+    StoreSB buf len # first byte of str8 is the length (to write)
+    LoadS len # byte offset to find the start of the str8
+    SysS write buf
     Return 6 # Unwind PC and 6 because of accumulator + 5 extra reserved stack entries

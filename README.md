@@ -7,7 +7,7 @@
 
 Virtual Machine experiment
 
-This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
+This is an early experiment and comparison and optimization of a miniature assembler and VM with the following (sort of but less and less minimalistic) instructions:
 
 Immediate operand instructions:
 - `LoadI`, `AddI`, `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI` (though they can also load the relative address of a label as value)
@@ -33,13 +33,24 @@ Syscall:
   - 3: Write writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
   - more to come
 
-It compares go, tinygo, C based VMs (and plain C loop for reference).
+Assembler only:
+- `data` for a 64 bit word
+- `str8` for string (with the double or backtick quotes)
+- on a line preceeding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
+- `Var v1 v2 ...` virtual instruction that generates a `Push` instruction with the number of identifiers provided and defines label for said starting at 0 (which will start with the value of the accumulator while the rest will start 0 initialized).
+
+## Benchmarks
+Compares go, tinygo, C based VMs (and plain C loop for reference).
+
+## Usage and more
 
 See [Makefile](Makefile) / run `make`
+
+## Installation
 
 Binary release of the go version also available in releases/ or via
 ```sh
 go install grol.io/vm@latest
 ```
 
-(and docker as well)
+(and homebrew and docker as well)

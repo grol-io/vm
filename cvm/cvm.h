@@ -25,6 +25,7 @@ enum Instruction {
   Return,
   Push,
   Pop,
+  Sys,
   LoadS,
   StoreS,
   AddS,
@@ -33,7 +34,6 @@ enum Instruction {
   DivS,
   IncrS,
   StoreSB,
-  Sys,
   SysS,
 };
 
