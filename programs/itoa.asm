@@ -25,25 +25,25 @@
     Sys exit 0
 
 itoa: # prints accumulator as a decimal string
-    Push 5 # reserve 5 additional entries on stack: num:0 + is_negative:1, len/idx:2, buf:3,4,5
+    Push 5 # reserve 5 additional entries on stack: num:0 + sign:1, len/idx:2, buf:3,4,5
     LoadI 21
     StoreS 2 # len
     # Add the newline
     LoadI '\n'
     StoreSB 5 2 # stores newline in buf(5) at offset indicated by len(2)
     IncrS -1 2 # len/idx by -1
+    LoadI 1
+    StoreS 1 # sign
     LoadS 0 # num
     JPOS digits_loop
-    # else mark/remember as negative to add the minus sign at the end.
-    LoadI 1
-    StoreS 1 # is_negative
+    # else mark/remember as negative to add the minus sign at the end and multiply by -1 each digit.
+    LoadI -1
+    StoreS 1 # sign
     LoadS 0 # num
 
 digits_loop:
     ModI 10
-    JPOS positive_digit
-      MulI -1 # We don't just do that to the initial number because of min_int64
-  positive_digit:
+    MulS 1 # multiply by sign (-1 if negative or 1 if not)
     AddI '0'
     StoreSB 5 2 # stores digit in buf(5) at offset indicated by len(2)
     IncrS -1 2 # len/idx by -1
@@ -51,10 +51,12 @@ digits_loop:
     DivI 10
     StoreS 0 # num
     JNZ digits_loop
-
 done:
-    LoadS 1 # is_negative
-    JNZ add_minus
+    LoadS 1 # sign
+    JPOS finish_str
+    LoadI '-'
+    StoreSB 5 2 # stores '-' in buf(5) at offset indicated by len(2)
+    IncrS -1 2 # len by -1
 finish_str:
     LoadI 21
     SubS 2 # len
@@ -62,9 +64,3 @@ finish_str:
     LoadS 2 # len offset
     SysS write 5 # buf
     Return 6 # Unwind PC and 6 because of accumulator + 5 extra reserved stack entries
-
-add_minus:
-    LoadI '-'
-    StoreSB 5 2 # stores '-' in buf(5) at offset indicated by len(2)
-    IncrS -1 2 # len by -1
-    JumpR finish_str
