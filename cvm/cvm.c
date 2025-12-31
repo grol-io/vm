@@ -305,6 +305,27 @@ void run_program(CPU *cpu) {
                   ", SP=%d\n",
                   cpu->pc, offset, cpu->accumulator, stack_ptr);
     } break;
+    case SubS: {
+      int offset = (int)operand;
+      cpu->accumulator -= (int64_t)stack[stack_ptr - offset];
+      DEBUG_PRINT("SubS   at PC %" PRId64 ", offset %d, result %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
+    case MulS: {
+      int offset = (int)operand;
+      cpu->accumulator *= (int64_t)stack[stack_ptr - offset];
+      DEBUG_PRINT("MulS   at PC %" PRId64 ", offset %d, result %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
+    case DivS: {
+      int offset = (int)operand;
+      cpu->accumulator /= (int64_t)stack[stack_ptr - offset];
+      DEBUG_PRINT("DivS   at PC %" PRId64 ", offset %d, result %" PRId64
+                  ", SP=%d\n",
+                  cpu->pc, offset, cpu->accumulator, stack_ptr);
+    } break;
     case IncrS: {
       int64_t arg = operand;
       int offset = (int)(arg >> 8);
