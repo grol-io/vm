@@ -53,6 +53,7 @@ func Compile(files ...string) int {
 	return 0
 }
 
+//nolint:gocyclo // it's a full parser.
 func parse(reader *bufio.Reader) ([]string, error) {
 	var result []string
 	var current strings.Builder
@@ -78,6 +79,8 @@ loop:
 			return nil, err
 		}
 		switch {
+		case ch == '\r':
+			continue // just ignore all CRs (windows extra line terminator)
 		case ch == '\n' && (!inQuote || whichQuote != '`'):
 			break loop
 		case !inQuote && (ch == '"' || ch == '\'' || ch == '`'):
