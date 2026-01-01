@@ -33,7 +33,7 @@ itoa: ; prints accumulator as a decimal string
     StoreS idx
     ; Add the newline
     LoadI '\n'
-    StoreSB buf idx ; stores newline in buf(5) at offset indicated by idx(2)
+    StoreSB buf idx ; stores newline in buf at offset indicated by idx
     IncrS -1 idx
     LoadI 1
     StoreS sign
@@ -48,7 +48,7 @@ digits_loop:
     ModI 10
     MulS sign ; multiply by sign (-1 if negative or 1 if not)
     AddI '0'
-    StoreSB buf idx ; stores digit in buf(5) at offset indicated by idx(2)
+    StoreSB buf idx ; stores digit in buf at offset indicated by idx
     IncrS -1 idx ; decrement idx by 1 (which thus also increments the length=21-idx)
     LoadS num ; num
     DivI 10
@@ -58,7 +58,7 @@ done:
     LoadS sign ; sign
     JPOS finish_str
     LoadI '-'
-    StoreSB buf idx ; stores '-' in buf(5) at offset indicated by idx(2)
+    StoreSB buf idx ; stores '-' in buf at offset indicated by idx
     IncrS -1 idx ; idx by -1
 finish_str:
     LoadI 21 ; calculate length based on what we started idx at
@@ -66,4 +66,4 @@ finish_str:
     StoreSB buf idx ; first byte of str8 is the length (to write)
     LoadS idx ; byte offset to find the start of the str8
     SysS write buf
-    Return; -> Ret 6 to unwind PC and 6 because of accumulator + 5 extra reserved stack entries
+    Return ; -> Ret 6 to pop the 6 (`var`s) and return address to PC

@@ -285,6 +285,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			op = op.SetOperand(cpu.ImmediateData(returnN))
 			log.Debugf("Return -> Ret %d", returnN)
 			returnN = 0
+			clear(varmap)
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
