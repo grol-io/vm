@@ -348,7 +348,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			pc = ImmediateData(stack[stackPtr])
 			stackPtr--
 			if Debug {
-				log.Debugf("Return   at PC: %d, returning to PC: %d - SP = %d %v", oldPC, pc, stackPtr, stack[:stackPtr+1])
+				log.Debugf("Return  at PC: %d, returning to PC: %d - SP = %d %v", oldPC, pc, stackPtr, stack[:stackPtr+1])
 			}
 			continue
 		case Push:
@@ -415,10 +415,12 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			arg := op.Operand()
 			offset := int(arg >> 8)
 			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
-			stack[stackPtr-offset] += Operation(value)
+			oldValue := stack[stackPtr-offset]
+			accumulator = int64(oldValue) + int64(value)
+			stack[stackPtr-offset] = Operation(accumulator)
 			if Debug {
 				log.Debugf("IncrS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
-					pc, offset, value, stack[stackPtr-offset], stackPtr, stack[:stackPtr+1])
+					pc, offset, value, accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case IdivS:
 			offset := int(op.Operand())

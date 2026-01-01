@@ -24,33 +24,35 @@ type Line struct {
 }
 
 func Compile(files ...string) int {
-	for _, file := range files {
+	readers := make([]io.Reader, 0, len(files))
+	var writer *bufio.Writer
+	for i, file := range files {
 		log.Infof("Compiling file: %s", file)
 		f, err := os.Open(file)
 		if err != nil {
-			log.Errf("Failed to open file %s: %v", file, err)
-			continue
+			return log.FErrf("Failed to open file %s: %v", file, err)
 		}
 		defer f.Close()
 		// replace .asm with .vm
-		outputFile := strings.TrimSuffix(file, ".asm") + ".vm"
-		log.Infof("Output file: %s", outputFile)
-		out, err := os.Create(outputFile)
-		if err != nil {
-			log.Errf("Failed to create output file %s: %v", outputFile, err)
-			continue
+		if !strings.HasSuffix(file, ".asm") {
+			return log.FErrf("Invalid file extension for %s, expected .asm", file)
 		}
-		defer out.Close()
-		writer := bufio.NewWriter(out)
-		defer writer.Flush()
-		_, _ = writer.WriteString(cpu.HEADER)
-		reader := bufio.NewReader(f)
-		ret := compile(reader, writer)
-		if ret != 0 {
-			return ret
+		if i == 0 {
+			outputFile := strings.TrimSuffix(file, ".asm") + ".vm"
+			log.Infof("Output file: %s", outputFile)
+			out, err := os.Create(outputFile)
+			if err != nil {
+				return log.FErrf("Failed to create output file %s: %v", outputFile, err)
+			}
+			defer out.Close()
+			writer = bufio.NewWriter(out)
+			defer writer.Flush()
+			_, _ = writer.WriteString(cpu.HEADER)
 		}
+		readers = append(readers, f)
 	}
-	return 0
+	reader := bufio.NewReader(io.MultiReader(readers...))
+	return compile(reader, writer)
 }
 
 //nolint:gocyclo // it's a full parser.
@@ -284,8 +286,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			op = op.SetOpcode(cpu.Ret)
 			op = op.SetOperand(cpu.ImmediateData(returnN))
 			log.Debugf("Return -> Ret %d", returnN)
-			returnN = 0
-			clear(varmap)
+			// Don't reset returnN or varmap because there could be more than 1 return
+			// point.
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
@@ -294,9 +296,15 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
 			if instrEnum >= cpu.LoadS { // for stack instructions, resolve var references
 				for i, v := range args {
+					if !isAddressLabel(v) {
+						continue
+					}
 					if idx, ok := varmap[v]; ok {
 						log.Debugf("Resolved var %s to index %d", v, idx)
 						args[i] = fmt.Sprintf("%d", idx)
+					} else if instrEnum != cpu.SysS || i != 0 {
+						// First argument of SysS is the syscall name not a stack variable.
+						return log.FErrf("Unknown stack variable: %s", v)
 					}
 				}
 			}
