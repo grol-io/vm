@@ -107,7 +107,7 @@ loop:
 			}
 			current.Reset()
 			inQuote = false
-		case ch == '#' && !inQuote:
+		case (ch == '#' || ch == ';') && !inQuote:
 			emit()
 			// skip the rest of the line as a comment
 			_, _ = reader.ReadString('\n')
@@ -201,10 +201,12 @@ func serializeStr8(b []byte) []Line {
 	return result
 }
 
-//nolint:gocognit,funlen,gocyclo // yes it is a full assembler...
+//nolint:gocognit,funlen,gocyclo,maintidx // yes it is a full assembler...
 func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	labels := make(map[string]cpu.ImmediateData)
+	varmap := make(map[string]cpu.ImmediateData)
+	returnN := 0
 	var result []Line
 	for {
 		fields, err := parse(reader)
@@ -228,14 +230,24 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		instr := strings.ToLower(first)
 		args := fields[1:]
 		narg := len(args)
-		if instr == "incrr" || instr == "incrs" || instr == "sys" || instr == "syss" || instr == "storesb" {
+		switch instr {
+		case "return":
+			if narg != 0 {
+				return log.FErrf("Expecting 0 arguments for return, got %d (%v)", narg, args)
+			}
+		case "var":
+			if narg == 0 {
+				return log.FErrf("Expecting at least 1 argument for var, got none")
+			}
+		case "incrr", "incrs", "sys", "syss", "storesb":
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
 			}
-		} else if narg != 1 {
-			return log.FErrf("Expecting 1 argument for %s, got %d (%v)", instr, narg, args)
+		default:
+			if narg != 1 {
+				return log.FErrf("Expecting 1 argument for %s, got %d (%v)", instr, narg, args)
+			}
 		}
-		arg := args[0]
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
 		data := true
@@ -243,26 +255,52 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		switch instr {
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
-			v, err := parseArg(arg)
+			v, err := parseArg(args[0])
 			if err != nil {
-				return log.FErrf("Failed to parse data argument %q: %v", arg, err)
+				return log.FErrf("Failed to parse data argument %q: %v", args[0], err)
 			}
 			op = cpu.Operation(v)
 		case "str8":
-			l := len(arg)
+			l := len(args[0])
 			if l == 0 || l > 255 {
 				return log.FErrf("str8 argument out of range: %d", l)
 			}
-			ops := serializeStr8([]byte(arg))
+			ops := serializeStr8([]byte(args[0]))
 			result = append(result, ops...)
 			pc += cpu.ImmediateData(len(ops))
 			continue
+		case "var":
+			data = false
+			clear(varmap)
+			op = op.SetOpcode(cpu.Push)
+			op = op.SetOperand(cpu.ImmediateData(narg - 1))
+			returnN = narg
+			for i := range narg {
+				varmap[args[i]] = cpu.ImmediateData(i)
+			}
+			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
+		case "return":
+			data = false
+			op = op.SetOpcode(cpu.Ret)
+			op = op.SetOperand(cpu.ImmediateData(returnN))
+			log.Debugf("Return -> Ret %d", returnN)
+			returnN = 0
+			clear(varmap)
 		default:
 			instrEnum, ok := cpu.InstructionFromString(instr)
 			if !ok {
 				return log.FErrf("Unknown instruction: %s", instr)
 			}
 			log.Debugf("Parsing instruction: %s %v", instrEnum, args)
+			if instrEnum >= cpu.LoadS { // for stack instructions, resolve var references
+				for i, v := range args {
+					if idx, ok := varmap[v]; ok {
+						log.Debugf("Resolved var %s to index %d", v, idx)
+						args[i] = fmt.Sprintf("%d", idx)
+					}
+				}
+			}
+			arg := args[0]
 			data = false
 			op = op.SetOpcode(instrEnum)
 			switch instrEnum {
@@ -349,7 +387,7 @@ func emitCode(writer io.Writer, result []Line, labels map[string]cpu.ImmediateDa
 			// resolve label
 			targetPC, ok := labels[line.Label]
 			if !ok {
-				return log.FErrf("Unknown label: %s", line.Label)
+				return log.FErrf("Unknown label: %s for %#v", line.Label, line)
 			}
 			relativePC := targetPC - cpu.ImmediateData(pc)
 			if line.Is48bit {

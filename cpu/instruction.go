@@ -29,10 +29,15 @@ const (
 	StoreR // *[PC + param] = A
 	IncrR  // A = *[PC + param1] + param0; *[PC + param1] = A
 
-	Call   // push PC+1 on stack and jump to PC + param
-	Return // pop PC from stack and unwind stack by param additional entries (RET 0 if nothing was pushed)
-	Push   // push A and reserve param additional entries on stack
-	Pop    // pop A from stack + param additional entries
+	Call // push PC+1 on stack and jump to PC + param
+	Ret  // pop PC from stack and unwind stack by param additional entries (RET 0 if nothing was pushed)
+	Push // push A and reserve param additional entries on stack
+	Pop  // pop A from stack + param additional entries
+
+	Sys // syscall with immediate or relative address operand
+
+	// -- Start of stack instructions (resolving `var` references).
+
 	LoadS  // load from stack (A = *[SP - param])
 	StoreS // store to stack (*[SP - param] = A)
 	AddS   // A = A + *[SP - param]
@@ -45,7 +50,6 @@ const (
 
 	StoreSB // store byte to stack with param0 = stack base, param1 = stack indicating byte offset
 
-	Sys  // syscall with immediate or relative address operand
 	SysS // syscall with stack index operand
 	LastInstruction
 )

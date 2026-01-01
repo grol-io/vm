@@ -22,9 +22,10 @@ enum Instruction {
   StoreR,
   IncrR,
   Call,
-  Return,
+  Ret,
   Push,
   Pop,
+  Sys,
   LoadS,
   StoreS,
   AddS,
@@ -33,7 +34,6 @@ enum Instruction {
   DivS,
   IncrS,
   StoreSB,
-  Sys,
   SysS,
 };
 

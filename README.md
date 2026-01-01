@@ -7,7 +7,7 @@
 
 Virtual Machine experiment
 
-This is an early experiment and comparison and optimization of a miniature assembler and VM with the following minimalistic instructions:
+This is an early experiment and comparison and optimization of a miniature assembler and VM with the following (sort of but less and less minimalistic) instructions:
 
 Immediate operand instructions:
 - `LoadI`, `AddI`, `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI` (though they can also load the relative address of a label as value)
@@ -16,7 +16,7 @@ Relative address based instructions:
 - `LoadR`, `AddR`, `SubR`, `MulR`, `DivR`, `StoreR`, `JNZ` (jump if not equal to 0), `JNEG` (jump if negative), `JPOS` (jump if positive or 0), `JumpR` (unconditional jump), `IncrR i addr` increments (or decrements if `i` is negative the value at `addr` by `i` and loads the result in the accumulator)
 
 Stack-oriented instructions let the VM manage simple call frames:
-- `Call` pushes the return address, and `Return` unwinds the stack (optionally dropping extra entries).
+- `Call` pushes the return address, and `Ret` unwinds the stack (optionally dropping extra entries).
 - `Push`/`Pop` move the accumulator to and from the stack while reserving or discarding extra slots.
 - `LoadS`, `StoreS`, `AddS`, `SubS`, `MulS`, `DivS`, and `IncrS` read and write relative to the current stack pointer so stack-resident variables can be manipulated without touching memory directly, and `SysS` mirrors `Sys` but uses a stack index operand for its first argument.
 - `StoreSB` stores a single byte from the accumulator into a stack-resident buffer: the first operand specifies the base stack offset of the target word span, while 2nd operand indicates a stack slot containing the byte offset (which can be more than 8). The handler computes the word/bit position and patches the selected byte in place. It is handy for building packed `str8` buffers on the stack (see [programs/itoa.asm](programs/itoa.asm)).
@@ -33,13 +33,25 @@ Syscall:
   - 3: Write writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
   - more to come
 
-It compares go, tinygo, C based VMs (and plain C loop for reference).
+Assembler only:
+- `data` for a 64 bit word
+- `str8` for string (with the double or backtick quotes)
+- on a line preceding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
+- `Var v1 v2 ...` virtual instruction that generates a `Push` instruction with the number of identifiers provided and defines labels for said variables starting at 0 (which will start with the value of the accumulator while the rest will start 0 initialized).
+- `Return` virtual instruction that generates a `Ret n` where _n_ is such as a Var push is undone.
+
+## Benchmarks
+Compares go, tinygo, C based VMs (and plain C loop for reference).
+
+## Usage and more
 
 See [Makefile](Makefile) / run `make`
+
+## Installation
 
 Binary release of the go version also available in releases/ or via
 ```sh
 go install grol.io/vm@latest
 ```
 
-(and docker as well)
+(and homebrew and docker as well)
