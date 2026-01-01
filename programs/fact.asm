@@ -1,5 +1,5 @@
 ; factorial
-; depends on iotoa, so compile with
+; depends on itoa, so compile with
 ; vm compile programs/fact.asm programs/itoa.asm
 
     sys write fact_rec_str

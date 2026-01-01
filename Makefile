@@ -52,9 +52,10 @@ grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 cvm-loop: grol_cvm
 	time ./grol_cvm programs/loop.vm
 
-fact: vm
+fact: vm grol_cvm
 	./vm compile programs/fact.asm programs/itoa.asm
 	./vm run -quiet programs/fact.vm
+	./grol_cvm programs/fact.vm
 
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
@@ -84,7 +85,7 @@ install:
 	vm version
 
 
-test: vm unit-tests itoa-test
+test: vm unit-tests itoa-test fact
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -104,7 +105,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact
 
 show_cpu_profile:
 	-pkill pprof

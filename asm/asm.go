@@ -43,8 +43,7 @@ func Compile(files ...string) int {
 			log.Infof("Output file: %s", outputFile)
 			out, err := os.Create(outputFile)
 			if err != nil {
-				log.Errf("Failed to create output file %s: %v", outputFile, err)
-				continue
+				return log.FErrf("Failed to create output file %s: %v", outputFile, err)
 			}
 			defer out.Close()
 			writer = bufio.NewWriter(out)
