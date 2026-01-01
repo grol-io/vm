@@ -50,9 +50,9 @@ digits_loop:
     AddI '0'
     StoreSB buf idx ; stores digit in buf at offset indicated by idx
     IncrS -1 idx ; decrement idx by 1 (which thus also increments the length=21-idx)
-    LoadS num ; num
+    LoadS num
     DivI 10
-    StoreS num ; num
+    StoreS num
     JNZ digits_loop
 done:
     LoadS sign ; sign
