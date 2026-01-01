@@ -30,8 +30,7 @@ func Compile(files ...string) int {
 		log.Infof("Compiling file: %s", file)
 		f, err := os.Open(file)
 		if err != nil {
-			log.Errf("Failed to open file %s: %v", file, err)
-			continue
+			return log.FErrf("Failed to open file %s: %v", file, err)
 		}
 		defer f.Close()
 		// replace .asm with .vm
