@@ -52,11 +52,7 @@ func Compile(files ...string) int {
 		readers = append(readers, f)
 	}
 	reader := bufio.NewReader(io.MultiReader(readers...))
-	ret := compile(reader, writer)
-	if ret != 0 {
-		return ret
-	}
-	return 0
+	return compile(reader, writer)
 }
 
 //nolint:gocyclo // it's a full parser.
