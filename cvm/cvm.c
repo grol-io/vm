@@ -331,7 +331,8 @@ void run_program(CPU *cpu) {
       int8_t value = (int8_t)(arg & 0xFF);
       DEBUG_PRINT("IncrS  at PC %" PRId64 ", offset %d, by %d, SP=%d\n",
                   cpu->pc, offset, value, stack_ptr);
-      stack[stack_ptr - offset] += (Operation)value;
+      cpu->accumulator = (int64_t)stack[stack_ptr - offset] + (int64_t)value;
+      stack[stack_ptr - offset] = (Operation)cpu->accumulator;
       DEBUG_PRINT("IncrS  new value %" PRId64 "\n",
                   (int64_t)stack[stack_ptr - offset]);
     } break;
