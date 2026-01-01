@@ -52,6 +52,10 @@ grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 cvm-loop: grol_cvm
 	time ./grol_cvm programs/loop.vm
 
+fact: vm
+	./vm compile programs/fact.asm programs/itoa.asm
+	./vm run -quiet programs/fact.vm
+
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
 	./grol_cvm programs/simple.vm
