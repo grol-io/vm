@@ -42,17 +42,15 @@ itoa: ; prints accumulator as a decimal string
     ; else mark/remember as negative to add the minus sign at the end and multiply by -1 each digit.
     LoadI -1
     StoreS sign
-    LoadS num
 
 digits_loop:
-    ModI 10
+    LoadI 10
+    IdivS num ; num /= 10; A = num % 10
     MulS sign ; multiply by sign (-1 if negative or 1 if not)
     AddI '0'
     StoreSB buf idx ; stores digit in buf at offset indicated by idx
     IncrS -1 idx ; decrement idx by 1 (which thus also increments the length=21-idx)
     LoadS num
-    DivI 10
-    StoreS num
     JNZ digits_loop
 done:
     LoadS sign ; sign

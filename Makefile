@@ -1,6 +1,6 @@
 # all: generate lint check test run
 
-all: clean generate lint test run grol_cvm native
+all: clean generate lint test run cvm-loop native
 
 clean:
 	rm -f vm grol_cvm tiny_vm a.out
@@ -48,6 +48,9 @@ cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
+
+cvm-loop: grol_cvm
+	time ./grol_cvm programs/loop.vm
 
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c

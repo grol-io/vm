@@ -33,6 +33,7 @@ enum Instruction {
   MulS,
   DivS,
   IncrS,
+  IdivS,
   StoreSB,
   SysS,
 };
