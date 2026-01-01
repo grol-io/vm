@@ -303,6 +303,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 						log.Debugf("Resolved var %s to index %d", v, idx)
 						args[i] = fmt.Sprintf("%d", idx)
 					} else if instrEnum != cpu.SysS || i != 0 {
+						// First argument of SysS is the syscall name not a stack variable.
 						return log.FErrf("Unknown stack variable: %s", v)
 					}
 				}
