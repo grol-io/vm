@@ -420,6 +420,15 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				log.Debugf("IncrS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, value, stack[stackPtr-offset], stackPtr, stack[:stackPtr+1])
 			}
+		case IdivS:
+			offset := int(op.Operand())
+			current := int64(stack[stackPtr-offset])
+			stack[stackPtr-offset] = Operation(current / accumulator)
+			accumulator = current % accumulator
+			if Debug {
+				log.Debugf("IdivS   at PC: %d, offset: %d, value: %d -> %d, remainder: %d - SP = %d %v",
+					pc, offset, current, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
+			}
 		case StoreSB:
 			arg := op.Operand()
 			offset := int(arg >> 8)              // base offset (highest stack offset in the span)

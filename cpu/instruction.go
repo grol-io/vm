@@ -45,6 +45,7 @@ const (
 	MulS   // A = A * *[SP - param]
 	DivS   // A = A / *[SP - param]
 	IncrS  // A = *[SP - param1] + param0; *[SP - param1] = A
+	IdivS  // A = *[SP - param] % A; *[SP - param] /= A
 
 	// LoadSB  // load byte from stack with param0 = base, param1 = byte offset.
 

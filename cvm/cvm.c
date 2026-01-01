@@ -335,6 +335,16 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("IncrS  new value %" PRId64 "\n",
                   (int64_t)stack[stack_ptr - offset]);
     } break;
+    case IdivS: {
+      int offset = (int)operand;
+      int64_t current = (int64_t)stack[stack_ptr - offset];
+      stack[stack_ptr - offset] = (Operation)(current / cpu->accumulator);
+      cpu->accumulator = current % cpu->accumulator;
+      DEBUG_PRINT("IdivS  at PC %" PRId64 ", offset %d, value %" PRId64
+                  " -> %" PRId64 ", remainder %" PRId64 ", SP=%d\n",
+                  cpu->pc, offset, current, stack[stack_ptr - offset],
+                  cpu->accumulator, stack_ptr);
+    } break;
     case StoreSB: {
       int64_t arg = operand;
       int base_offset = (int)(arg >> 8);           // highest stack offset in the span
