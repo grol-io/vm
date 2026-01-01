@@ -4,14 +4,12 @@
 
     sys write fact_rec_str
     loadI 5
-    call itoa
-    loadI 5
+    call print
     call factrec
     call itoa
     sys write fact_iter_str
     loadI 7
-    call itoa
-    loadI 7
+    call print
     call facti
     call itoa
     sys exit 0
@@ -40,8 +38,18 @@ end:
     loadS result
     return
 
+; print accumulator and put its value back (instead of the bytes written returned by itoa)
+print:
+    var acc
+    sys write fact_str
+    loadS acc
+    call itoa
+    loadS acc
+    return
 
 fact_rec_str:
-    str8 "Recursive Factorial of "
+    str8 "Recursive "
 fact_iter_str:
-    str8 "Iterative Factorial of "
+    str8 "Iterative "
+fact_str:
+    str8 "Factorial of "
