@@ -283,7 +283,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
 		case "param":
 			// define more stack labels
-			start := returnN + 1
+			start := returnN + 1 // +1 to skip over the return PC
 			for i := range narg {
 				varmap[args[i]] = cpu.ImmediateData(start + i)
 			}
