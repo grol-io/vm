@@ -10,11 +10,11 @@ var base exp # accumulator (so: 2) pushed to stack slot 0, creates exp slot 1
 
 pow:
     ; inside the pow subroutine, s0 is the return address so s1 is the first argument (base) and s2 is the second argument (exp)
-    loadi 1
+    loadi 1  ; initialize result to 1
   var result ; now we pushed one more so exp is at slot 3 and base at slot 2
-  param b e ; b = base, e = exp bound in virtual stack
+  param b e  ; b = base, e = exp bound in virtual stack
   loop:
-    loads result ; base from caller
+    loads result
     muls b
     stores result
     incrs -1 e
