@@ -468,7 +468,7 @@ func TestSysPrint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			n := sysPrint(&buf, tt.memory, tt.addr, tt.offset)
+			n := sysWrite(&buf, tt.memory, tt.addr, tt.offset)
 			if n != tt.wantN {
 				t.Errorf("sysPrint() returned %d, want %d", n, tt.wantN)
 			}

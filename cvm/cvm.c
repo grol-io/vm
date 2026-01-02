@@ -47,25 +47,43 @@ typedef struct CPU {
 
 enum { StackSize = 256 };
 
-// sys_print writes bytes from memory starting at addr to stdout
+// sys_write writes bytes from memory starting at addr to stdout
 // Returns the number of bytes written or -1 on error
 // relies on the VM layout where the str8 payload is contiguous in memory
 // following the first word that stores the length in its low byte.
-int64_t sys_print(Operation *memory, int addr, int offset) {
+int64_t sys_write(Operation *memory, int addr, int offset) {
   // All bytes are contiguous in memory (including the length byte)
-  uint8_t *data = ((uint8_t *)&memory[addr])+offset;
+  uint8_t *data = ((uint8_t *)&memory[addr]) + offset;
   int length = *data++;
   if (length == 0) {
     return 0;
   }
   ssize_t n = write(STDOUT_FILENO, data, length);
+  if (n < 0) {
+    perror("Failed to write");
+    return n;
+  }
   if (n != length) {
-    fprintf(stderr,
-            "Failed to write all bytes: expected %d, got %zd\n",
-            length, n);
+    fprintf(stderr, "Failed to write all bytes: expected %d, got %zd\n", length,
+            n);
     return -1;
   }
   return length;
+}
+
+int64_t sys_read(Operation *memory, int addr, int n) {
+  if (n <= 0 || n > 255) {
+    fprintf(stderr, "Invalid read size for str8: %d\n", n);
+    return -1;
+  }
+  uint8_t *data = ((uint8_t *)&memory[addr]);
+  ssize_t r = read(STDIN_FILENO, data+1, n);
+  if (r < 0) {
+    perror("Failed to read");
+    return -1;
+  }
+  *data = (uint8_t)r;
+  return r;
 }
 
 void run_program(CPU *cpu) {
@@ -224,18 +242,25 @@ void run_program(CPU *cpu) {
                 syscallarg, cpu->pc);
         usleep(syscallarg * 1000);
         break;
+      case Read: {
+        int64_t addr =
+            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
+        DEBUG_PRINT("Read syscall at PC %" PRId64 ", addr: %" PRId64
+                    ", from %s\n",
+                    cpu->pc, addr, is_stack ? "stack" : "program");
+        cpu->accumulator = sys_read(is_stack ? stack : cpu->program, (int)addr, (int)cpu->accumulator);
+      } break;
       case Write: {
-        int64_t addr = is_stack ? (stack_ptr - (int)syscallarg)
-                                : (cpu->pc + syscallarg);
+        int64_t addr =
+            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
         DEBUG_PRINT("Write syscall at PC %" PRId64 ", addr: %" PRId64
                     ", from %s\n",
                     cpu->pc, addr, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_print(is_stack ? stack : cpu->program,
-                                     (int)addr, is_stack? cpu->accumulator : 0);
+        cpu->accumulator = sys_write(is_stack ? stack : cpu->program, (int)addr,
+                                     is_stack ? cpu->accumulator : 0);
         if (cpu->accumulator == -1) {
           fprintf(stderr, "ERR: Write syscall failed at PC %" PRId64 "\n",
                   cpu->pc);
-          exit(1);
         }
       } break;
       default:
@@ -256,8 +281,8 @@ void run_program(CPU *cpu) {
       if (extra > 0) {
         stack_ptr -= (int)extra;
       }
-      DEBUG_PRINT("Return at PC %" PRId64 ", to %" PRId64 ", SP=%d\n",
-                  cpu->pc, (int64_t)stack[stack_ptr], stack_ptr);
+      DEBUG_PRINT("Return at PC %" PRId64 ", to %" PRId64 ", SP=%d\n", cpu->pc,
+                  (int64_t)stack[stack_ptr], stack_ptr);
       cpu->pc = (int64_t)stack[stack_ptr];
       stack_ptr--;
       continue;
@@ -348,7 +373,7 @@ void run_program(CPU *cpu) {
     } break;
     case StoreSB: {
       int64_t arg = operand;
-      int base_offset = (int)(arg >> 8);           // highest stack offset in the span
+      int base_offset = (int)(arg >> 8); // highest stack offset in the span
       uint8_t bytes_stack_index = (uint8_t)(arg & 0xFF);
       int bytes_offset = (int)stack[stack_ptr - (int)bytes_stack_index];
       int word_offset = bytes_offset / 8;
@@ -356,16 +381,15 @@ void run_program(CPU *cpu) {
       uint64_t old_value = (uint64_t)stack[stack_index];
       int inner_offset_bits = (bytes_offset % 8) * 8;
       uint64_t mask = ((uint64_t)0xFF) << inner_offset_bits;
-      uint64_t new_value = (old_value & ~mask) |
-                           (((uint64_t)(cpu->accumulator & 0xFF))
-                            << inner_offset_bits);
+      uint64_t new_value =
+          (old_value & ~mask) |
+          (((uint64_t)(cpu->accumulator & 0xFF)) << inner_offset_bits);
       stack[stack_index] = (Operation)new_value;
-      DEBUG_PRINT(
-          "StoreSB at PC %" PRId64
-          ", baseOffset %d, bytesStackIndex %u, bytesOffset %d, oldValue %" PRIx64
-          " -> newValue %" PRIx64 ", SP=%d\n",
-          cpu->pc, base_offset, bytes_stack_index, bytes_offset, old_value,
-          new_value, stack_ptr);
+      DEBUG_PRINT("StoreSB at PC %" PRId64
+                  ", baseOffset %d, bytesStackIndex %u, bytesOffset %d, "
+                  "oldValue %" PRIx64 " -> newValue %" PRIx64 ", SP=%d\n",
+                  cpu->pc, base_offset, bytes_stack_index, bytes_offset,
+                  old_value, new_value, stack_ptr);
     } break;
     default:
       fprintf(stderr, "ERR: Unknown opcode %d at PC %" PRId64 "\n", opcode,
@@ -382,6 +406,7 @@ void run_program(CPU *cpu) {
 #define INSTR_SIZE sizeof(Operation)
 
 int main(int argc, char **argv) {
+  signal(SIGPIPE, SIG_IGN);
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <program.vm>\n", argv[0]);
     return 1;
