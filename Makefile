@@ -32,6 +32,8 @@ run: vm
 	./vm compile -loglevel debug programs/incr.asm
 	./vm run -loglevel debug programs/incr.vm
 	./vm compile -loglevel debug programs/loop.asm
+	./vm compile -loglevel debug programs/pow.asm
+	./vm run -loglevel debug programs/pow.vm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 
 GEN:=cpu/instruction_string.go cpu/syscall_string.go
