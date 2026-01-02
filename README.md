@@ -39,6 +39,7 @@ Assembler only:
 - `str8` for string (with the double or backtick quotes)
 - on a line preceding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
 - `Var v1 v2 ...` virtual instruction that generates a `Push` instruction with the number of identifiers provided and defines labels for said variables starting at 0 (which will start with the value of the accumulator while the rest will start 0 initialized).
+- `Param p1 p2 ...` virtual instruction that generates stack labels for p1,p2 as offset from before the return PC (ie parameters pushed (via `Var` or `Push`) by the caller before calling `Call`)
 - `Return` virtual instruction that generates a `Ret n` where _n_ is such as a Var push is undone.
 
 ## Benchmarks

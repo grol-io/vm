@@ -237,9 +237,9 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			if narg != 0 {
 				return log.FErrf("Expecting 0 arguments for return, got %d (%v)", narg, args)
 			}
-		case "var":
+		case "var", "param":
 			if narg == 0 {
-				return log.FErrf("Expecting at least 1 argument for var, got none")
+				return log.FErrf("Expecting at least 1 argument for %s, got none", instr)
 			}
 		case "incrr", "incrs", "sys", "syss", "storesb":
 			if narg != 2 {
@@ -281,6 +281,14 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				varmap[args[i]] = cpu.ImmediateData(i)
 			}
 			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
+		case "param":
+			// define more stack labels
+			start := returnN + 1
+			for i := range narg {
+				varmap[args[i]] = cpu.ImmediateData(start + i)
+			}
+			log.Debugf("Param -> Defined parameters: %v", varmap)
+			continue
 		case "return":
 			data = false
 			op = op.SetOpcode(cpu.Ret)
