@@ -63,7 +63,7 @@ const (
 
 // so vm run cat | false detects the error instead of silently dying.
 func signalSetup() {
-	signal.Ignore(os.Signal(syscall.SIGPIPE))
+	signal.Ignore(syscall.SIGPIPE)
 }
 
 func Run(files ...string) int {

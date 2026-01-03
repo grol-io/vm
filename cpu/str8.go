@@ -15,6 +15,9 @@ func Serialize(b []byte) Operation {
 	return Operation(result) //nolint:gosec // no overflow, just bits shoving unsigned to signed.
 }
 
+// SerializeStr8 serializes a string of up to 255 bytes into a slice of Operations.
+// TODO: consider using unsafe to put the data directly into memory without copying
+// (like the cvm does).
 func SerializeStr8(b []byte) []Operation {
 	l := len(b)
 	if l == 0 || l > 255 {
