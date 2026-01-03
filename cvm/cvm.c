@@ -1,11 +1,11 @@
 #include "cvm.h"
 #include <inttypes.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -75,12 +75,14 @@ int64_t sys_read(Operation *memory, int addr, int n) {
     return -1;
   }
   uint8_t *data = ((uint8_t *)&memory[addr]);
-  ssize_t r = read(STDIN_FILENO, data+1, n);
+  ssize_t r = read(STDIN_FILENO, data + 1, n);
   if (r < 0) {
     perror("Failed to read");
     return -1;
   }
-  *data = (uint8_t)(r - 1);
+  if (r > 0) {
+    *data = (uint8_t)(r - 1);
+  }
   return r;
 }
 
@@ -135,7 +137,9 @@ void run_program(CPU *cpu) {
     case JNE: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JNE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JNE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator != value) {
         cpu->pc += addr;
         continue;
@@ -144,7 +148,9 @@ void run_program(CPU *cpu) {
     case JEQ: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JEQ at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JEQ at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator == value) {
         cpu->pc += addr;
         continue;
@@ -153,7 +159,9 @@ void run_program(CPU *cpu) {
     case JLT: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JLT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JLT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator < value) {
         cpu->pc += addr;
         continue;
@@ -162,7 +170,9 @@ void run_program(CPU *cpu) {
     case JGT: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JGT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JGT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator > value) {
         cpu->pc += addr;
         continue;
@@ -171,7 +181,9 @@ void run_program(CPU *cpu) {
     case JGTE: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JGTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JGTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator >= value) {
         cpu->pc += addr;
         continue;
@@ -180,7 +192,9 @@ void run_program(CPU *cpu) {
     case JLTE: {
       int64_t addr = operand >> 8;
       int64_t value = operand & 0xFF;
-      DEBUG_PRINT("JLTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      DEBUG_PRINT("JLTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
+                  "\n",
+                  cpu->pc, addr, value);
       if (cpu->accumulator <= value) {
         cpu->pc += addr;
         continue;
@@ -279,7 +293,8 @@ void run_program(CPU *cpu) {
         DEBUG_PRINT("Read syscall at PC %" PRId64 ", addr: %" PRId64
                     ", from %s\n",
                     cpu->pc, addr, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_read(is_stack ? stack : cpu->program, (int)addr, (int)cpu->accumulator);
+        cpu->accumulator = sys_read(is_stack ? stack : cpu->program, (int)addr,
+                                    (int)cpu->accumulator);
       } break;
       case Write: {
         int64_t addr =
