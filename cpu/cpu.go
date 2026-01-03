@@ -3,7 +3,6 @@
 package cpu
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"fortio.org/log"
 )
@@ -61,6 +61,8 @@ const (
 	// HEADER for the VM binary format, starts with non printable version byte to indicate it's binary.
 	// The first byte is the version byte, followed by the ASCII characters "GROL VM".
 	HEADER = "\x01GROL VM"
+	// OperationSize is the size of an Operation in bytes (int64).
+	OperationSize = 8
 )
 
 // so vm run cat | false detects the error instead of silently dying.
@@ -71,7 +73,11 @@ func signalSetup() {
 func Run(files ...string) int {
 	signalSetup()
 	cpu := &CPU{}
-	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation(0)))
+	rtSize := binary.Size(Operation(0))
+	log.Infof("Starting CPU - size of operation: %d bytes", rtSize)
+	if rtSize != OperationSize {
+		return log.FErrf("Unexpected operation size: got %d, want %d", rtSize, OperationSize)
+	}
 	for _, file := range files {
 		log.Infof("Running file: %s", file)
 		f, err := os.Open(file)
@@ -121,8 +127,17 @@ func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
 	if n <= 0 || n > 255 {
 		panic(fmt.Sprintf("invalid read size for str8: %d", n))
 	}
-	buf := make([]byte, n)
-	r, err := in.Read(buf)
+	if len(memory) == 0 {
+		panic("memory slice is empty")
+	}
+	// Cast the memory operations to a byte slice using unsafe
+	// Each Operation is an int64, so we need addr*OperationSize bytes offset
+	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
+
+	// For str8, the length byte goes at byteOffset 0, data starts at byteOffset 1
+	byteOffset := addr * OperationSize
+
+	r, err := in.Read(memAsBytes[byteOffset+1 : byteOffset+1+n])
 	if err != nil && !errors.Is(err, io.EOF) {
 		log.Errf("Failed to read: %v", err)
 		return -1
@@ -131,53 +146,46 @@ func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
 	if r == 0 {
 		return 0
 	}
-	ops := SerializeStr8(buf[:r])
-	for i, op := range ops {
-		memory[addr+i] = op
-	}
+	// Set the length byte
+	memAsBytes[byteOffset] = byte(r)
 	return int64(r)
 }
 
-// sysWrite prints the str8 bytes and returns the number of bytes it did output.
+// sysWrite writes the str8 bytes and returns the number of bytes it did output.
 func sysWrite(out io.Writer, memory []Operation, addr, offset int) int64 {
-	log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
-	op := memory[addr]
-	op >>= (offset * 8)
-	l := int(op & 0xFF)
-	if l == 0 {
+	if Debug {
+		log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
+	}
+
+	if len(memory) == 0 {
+		panic("memory slice is empty")
+	}
+	// Cast the memory operations to a byte slice using unsafe
+	// Each Operation is an int64, so we need addr*OperationSize bytes offset
+	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
+
+	byteOffset := addr*OperationSize + offset
+	length := int(memAsBytes[byteOffset])
+	if length == 0 {
 		return 0
 	}
-	buf := bytes.Buffer{}
-	// Read up to 7 bytes from first word
-	firstChunkSize := min(l, 7-offset)
-	for i := range firstChunkSize {
-		buf.WriteByte(byte(op >> (8 * (i + 1))))
+	if log.LogVerbose() {
+		// this would alloc a slice so we avoid it unless verbose logging is enabled
+		log.LogVf("Before writing bytes: %d %q", length, memAsBytes[byteOffset+1:byteOffset+1+length])
 	}
-	// Read remaining bytes from subsequent words (8 bytes each)
-	remaining := l - firstChunkSize
-	wordIdx := addr + 1
-	for remaining > 0 {
-		op = memory[wordIdx]
-		chunkSize := min(remaining, 8)
-		for i := range chunkSize {
-			buf.WriteByte(byte(op >> (8 * i)))
-		}
-		remaining -= chunkSize
-		wordIdx++
-	}
-	bufBytes := buf.Bytes()
-	log.LogVf("Before writing bytes: %d %d %q", l, len(bufBytes), bufBytes)
-	n, err := out.Write(buf.Bytes())
+	// Write directly from memory without copying
+	n, err := out.Write(memAsBytes[byteOffset+1 : byteOffset+1+length])
 	log.LogVf("Wrote %d bytes to stdout (err %v)", n, err)
+
 	if err != nil {
 		log.Errf("Failed to output str8: %v", err)
 		return -1
 	}
-	if n != l {
-		log.Errf("Failed to output all bytes: expected %d, got %d", l, n)
+	if n != length {
+		log.Errf("Failed to output all bytes: expected %d, got %d", length, n)
 		return -1
 	}
-	return int64(l)
+	return int64(length)
 }
 
 func executeSyscall(syscall Syscall, operand, accumulator int64,
