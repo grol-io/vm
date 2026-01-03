@@ -491,12 +491,12 @@ func BenchmarkSysWrite(b *testing.B) {
 	// Pre-allocate memory to avoid allocation counting noise
 	memory := make([]Operation, 4)
 	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\n" (6 bytes)
-	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A)
-	memory[0] = Operation(0x0A6F6C6C65480D)
-	// Second word: "World!\n" (7 bytes)
-	// W(0x57), o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
-	memory[1] = Operation(0x0A216C6C72756F57)
+	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
+	memory[0] = Operation(0x570A6F6C6C65480D)
+	// Second word: "orld!\n" (6 bytes)
+	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
+	memory[1] = Operation(0x0A21646C726F)
 
 	var buf bytes.Buffer
 	b.ReportAllocs()
@@ -506,18 +506,22 @@ func BenchmarkSysWrite(b *testing.B) {
 		buf.Reset()
 		sysWrite(&buf, memory, 0, 0)
 	}
+	str := buf.String()
+	if str != "Hello\nWorld!\n" {
+		b.Errorf("sysWrite() output = %q, want %q", str, "Hello\nWorld!\n")
+	}
 }
 
 func BenchmarkSysWriteNoBuffer(b *testing.B) {
 	// Pre-allocate memory to avoid allocation counting noise
 	memory := make([]Operation, 4)
 	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\n" (6 bytes)
-	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A)
-	memory[0] = Operation(0x0A6F6C6C65480D)
-	// Second word: "World!\n" (7 bytes)
-	// W(0x57), o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
-	memory[1] = Operation(0x0A216C6C72756F57)
+	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
+	memory[0] = Operation(0x570A6F6C6C65480D)
+	// Second word: "orld!\n" (6 bytes)
+	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
+	memory[1] = Operation(0x0A21646C726F)
 
 	var discard DiscardWriter
 	b.ReportAllocs()
