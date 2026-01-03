@@ -4,11 +4,9 @@
 read:
     LoadI 32 ; read up to 32 bytes at a time
     Sys Read buf
-    SubI 1 ; so both 0 and -1 skip the write
-    JGT 0 write
-    AddI 1 ; back to 0 vs -1
-    JLT 0 error
-    ; normal EOF case, no error:
+    JGT 0 write ; proceed to write if any bytes were read
+    JLT 0 error ; jump if error
+    ; Last case 0 read == normal EOF case, no error:
     Sys Exit 0
 write:
     Sys Write buf
