@@ -16,6 +16,15 @@ itoa-test: vm grol_cvm
 	./vm run -quiet programs/itoa.vm
 	./grol_cvm programs/itoa.vm
 
+SAMPLE_CAT:=cpu/cpu.go
+
+cat-test: vm grol_cvm
+	./vm compile programs/cat.asm
+	./vm run -quiet programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
+	cmp $(SAMPLE_CAT) /tmp/cat_output
+	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
+	cmp $(SAMPLE_CAT) /tmp/cat_output
+
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
 	od -t x8 programs/simple.vm
@@ -87,7 +96,7 @@ install:
 	vm version
 
 
-test: vm unit-tests itoa-test fact
+test: vm unit-tests itoa-test fact cat-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -107,7 +116,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test
 
 show_cpu_profile:
 	-pkill pprof
