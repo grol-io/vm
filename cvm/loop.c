@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #define MAX_ITOA 21
-void itoa_println(int64_t num) {
+ssize_t itoa_println(int64_t num) {
   int sign = (num < 0) ? -1 : 1;
   char buf[MAX_ITOA];
   int i = MAX_ITOA - 1;
@@ -17,7 +17,7 @@ void itoa_println(int64_t num) {
     buf[i--] = '-';
   }
   i++;
-  write(1, buf + i, MAX_ITOA - i);
+  return write(1, buf + i, MAX_ITOA - i);
 }
 
 int main(void) {
