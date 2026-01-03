@@ -355,32 +355,23 @@ func TestSysPrint(t *testing.T) {
 		{
 			name: "single byte string",
 			memory: []Operation{
-				// str8 format: byte 0 = length, bytes 1-7 = data
+				// str8 format: byte 0 = length-1, bytes 1-7 = data
 				// 'A' = 0x41
-				// Byte 0: length = 1, Byte 1: 'A' = 0x41
-				// Little-endian: 0x01 | (0x41 << 8) = 0x4101
-				Operation(0x4101),
+				// Byte 0: length-1 = 0, Byte 1: 'A' = 0x41
+				// Little-endian: 0x00 | (0x41 << 8) = 0x4100
+				Operation(0x4100),
 			},
 			addr:     0,
 			expected: "A",
 			wantN:    1,
 		},
 		{
-			name: "empty string",
-			memory: []Operation{
-				Operation(0x00), // length=0
-			},
-			addr:     0,
-			expected: "",
-			wantN:    0,
-		},
-		{
 			name: "three byte string",
 			memory: []Operation{
 				// "Hi!" = H(0x48), i(0x69), !(0x21)
-				// Byte 0: length = 3, Byte 1: 'H', Byte 2: 'i', Byte 3: '!'
-				// Little-endian: 0x03 | (0x48 << 8) | (0x69 << 16) | (0x21 << 24)
-				Operation(0x21694803),
+				// Byte 0: length-1 = 2, Byte 1: 'H', Byte 2: 'i', Byte 3: '!'
+				// Little-endian: 0x02 | (0x48 << 8) | (0x69 << 16) | (0x21 << 24)
+				Operation(0x21694802),
 			},
 			addr:     0,
 			expected: "Hi!",
@@ -389,7 +380,7 @@ func TestSysPrint(t *testing.T) {
 		{
 			name: "three byte string at 3 byte offset",
 			memory: []Operation{
-				Operation(0x21694803_00_00_00),
+				Operation(0x21694802_00_00_00),
 			},
 			addr:     0,
 			expected: "Hi!",
@@ -400,9 +391,9 @@ func TestSysPrint(t *testing.T) {
 			name: "7 byte string (fits in first word)",
 			memory: []Operation{
 				// "Hello!!" = H(0x48), e(0x65), first-l(0x6C), second-l(0x6C), o(0x6F), !(0x21), !(0x21)
-				// Byte 0: length=7, Bytes 1-7: Hello!!
-				// 0x07 | (0x48<<8) | (0x65<<16) | (0x6C<<24) | (0x6C<<32) | (0x6F<<40) | (0x21<<48) | (0x21<<56)
-				Operation(0x21216F6C6C654807),
+				// Byte 0: length-1=6, Bytes 1-7: Hello!!
+				// 0x06 | (0x48<<8) | (0x65<<16) | (0x6C<<24) | (0x6C<<32) | (0x6F<<40) | (0x21<<48) | (0x21<<56)
+				Operation(0x21216F6C6C654806),
 			},
 			addr:     0,
 			expected: "Hello!!",
@@ -412,9 +403,9 @@ func TestSysPrint(t *testing.T) {
 			name: "8 byte string (requires second word)",
 			memory: []Operation{
 				// "Hello Wo" = H(0x48), e(0x65), first-l(0x6C), second-l(0x6C), o(0x6F), space(0x20), W(0x57), o(0x6F)
-				// First word: length=8, bytes 1-7 = "Hello W"
-				// 0x08 | (0x48<<8) | (0x65<<16) | (0x6C<<24) | (0x6C<<32) | (0x6F<<40) | (0x20<<48) | (0x57<<56)
-				Operation(0x57206F6C6C654808),
+				// First word: length-1=7, bytes 1-7 = "Hello W"
+				// 0x07 | (0x48<<8) | (0x65<<16) | (0x6C<<24) | (0x6C<<32) | (0x6F<<40) | (0x20<<48) | (0x57<<56)
+				Operation(0x57206F6C6C654807),
 				// Second word: byte 0 = 'o' (0x6F)
 				Operation(0x6F),
 			},
@@ -426,8 +417,8 @@ func TestSysPrint(t *testing.T) {
 			name: "15 byte string (spans 2 continuation words)",
 			memory: []Operation{
 				// "Hello World, th"
-				// First word: length=15 (0x0F), bytes 1-7 = "Hello W"
-				Operation(0x57206F6C6C65480F),
+				// First word: length-1=14 (0x0E), bytes 1-7 = "Hello W"
+				Operation(0x57206F6C6C65480E),
 				// Second word: bytes 0-7 = "orld, th"
 				// o(0x6F), r(0x72), l(0x6C), d(0x64), comma(0x2C), space(0x20), t(0x74), h(0x68)
 				// 0x6F | (0x72<<8) | (0x6C<<16) | (0x64<<24) | (0x2C<<32) | (0x20<<40) | (0x74<<48) | (0x68<<56)
@@ -443,9 +434,9 @@ func TestSysPrint(t *testing.T) {
 				Operation(0x00), // dummy
 				Operation(0x00), // dummy
 				// "AB" = A(0x41), B(0x42)
-				// Byte 0: length=2, Byte 1: 'A', Byte 2: 'B'
-				// 0x02 | (0x41 << 8) | (0x42 << 16)
-				Operation(0x424102),
+				// Byte 0: length-1=1, Byte 1: 'A', Byte 2: 'B'
+				// 0x01 | (0x41 << 8) | (0x42 << 16)
+				Operation(0x424101),
 			},
 			addr:     2,
 			expected: "AB",
@@ -455,9 +446,9 @@ func TestSysPrint(t *testing.T) {
 			name: "multi-byte unicode (test raw bytes)",
 			memory: []Operation{
 				// 3 bytes for UTF-8 encoding of U+2000 (EN QUAD): 0xE2 0x80 0x80
-				// Byte 0: length=3, Byte 1: 0xE2, Byte 2: 0x80, Byte 3: 0x80
-				// 0x03 | (0xE2 << 8) | (0x80 << 16) | (0x80 << 24)
-				Operation(0x8080E203),
+				// Byte 0: length-1=2, Byte 1: 0xE2, Byte 2: 0x80, Byte 3: 0x80
+				// 0x02 | (0xE2 << 8) | (0x80 << 16) | (0x80 << 24)
+				Operation(0x8080E202),
 			},
 			addr:     0,
 			expected: "\u2000", // Unicode EN QUAD
@@ -491,9 +482,9 @@ func BenchmarkSysWrite(b *testing.B) {
 	// Pre-allocate memory to avoid allocation counting noise
 	memory := make([]Operation, 4)
 	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// First word: length-1=12 (0x0C), bytes 1-7 = "Hello\nW" (7 bytes of data)
 	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
-	memory[0] = Operation(0x570A6F6C6C65480D)
+	memory[0] = Operation(0x570A6F6C6C65480C)
 	// Second word: "orld!\n" (6 bytes)
 	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
 	memory[1] = Operation(0x0A21646C726F)
@@ -516,9 +507,9 @@ func BenchmarkSysWriteNoBuffer(b *testing.B) {
 	// Pre-allocate memory to avoid allocation counting noise
 	memory := make([]Operation, 4)
 	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// First word: length-1=12 (0x0C), bytes 1-7 = "Hello\nW" (7 bytes of data)
 	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
-	memory[0] = Operation(0x570A6F6C6C65480D)
+	memory[0] = Operation(0x570A6F6C6C65480C)
 	// Second word: "orld!\n" (6 bytes)
 	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
 	memory[1] = Operation(0x0A21646C726F)

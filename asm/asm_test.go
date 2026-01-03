@@ -150,21 +150,21 @@ func TestSerializeStr8(t *testing.T) {
 			input:         "A",
 			expectedLines: 1,
 			checkFirst:    true,
-			firstOp:       0x4101, // length 1 in byte 0, 'A' (0x41) in byte 1
+			firstOp:       0x4100, // length 0 (len-1) in byte 0, 'A' (0x41) in byte 1
 		},
 		{
 			name:          "two bytes",
 			input:         "AB",
 			expectedLines: 1,
 			checkFirst:    true,
-			firstOp:       0x424102, // 'A' (0x41), 'B' (0x42), length 2
+			firstOp:       0x424101, // 'A' (0x41), 'B' (0x42), length 1 (len-1)
 		},
 		{
 			name:          "seven bytes fits in one line",
 			input:         "ABCDEFG",
 			expectedLines: 1,
 			checkFirst:    true,
-			firstOp:       0x47464544434241_07, // 7 chars + length byte
+			firstOp:       0x47464544434241_06, // 7 chars + length byte (len-1=6)
 		},
 		{
 			name:          "eight bytes needs two words",
@@ -182,9 +182,9 @@ func TestSerializeStr8(t *testing.T) {
 			expectedLines: 3,
 		},
 		{
-			name:          "255 bytes max",
-			input:         string(make([]byte, 255)),
-			expectedLines: 32, // 1 + (255-7)/8 = 1 + 31 = 32
+			name:          "256 bytes max",
+			input:         string(make([]byte, 256)),
+			expectedLines: 33, // 1 + (256-7)/8 = 1 + 31.125 = 1 + 32 = 33
 		},
 	}
 
@@ -212,10 +212,10 @@ func TestSerializeStr8(t *testing.T) {
 				if firstOp != tt.firstOp {
 					t.Errorf("First operation = 0x%x, expected 0x%x", firstOp, tt.firstOp)
 				}
-				// Verify length byte
+				// Verify length byte (stored as len-1)
 				lengthByte := firstOp & 0xFF
-				if lengthByte != uint64(len(tt.input)) {
-					t.Errorf("Length byte = %d, expected %d", lengthByte, len(tt.input))
+				if lengthByte != uint64(len(tt.input)-1) {
+					t.Errorf("Length byte = %d, expected %d", lengthByte, len(tt.input)-1)
 				}
 			}
 		})
@@ -228,7 +228,7 @@ func TestSerializeStr8Panics(t *testing.T) {
 		input []byte
 	}{
 		{"empty string", []byte{}},
-		{"256 bytes", make([]byte, 256)},
+		{"257 bytes", make([]byte, 257)},
 		{"1000 bytes", make([]byte, 1000)},
 	}
 

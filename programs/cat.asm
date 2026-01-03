@@ -2,7 +2,7 @@
 ; test for instance with 1234567_10_234567_20_234567_30_234567_40
 
 read:
-    LoadI 32 ; read up to 32 bytes at a time
+    LoadI 256 ; read up to 256 bytes at a time
     Sys Read buf
     JGT 0 write ; proceed to write if any bytes were read
     JLT 0 error ; jump if error
@@ -15,6 +15,6 @@ write:
 error:
     Sys Exit 1
 
-; need (32+1) bytes for str8 so 5 words.
+; need (256+1) bytes for str8 so 33 words.
 buf:
-    .space 5 ; 5 words = 40 bytes to fit str8 size byte + 32 bytes
+    .space 33 ; 33 words = 264 bytes to fit str8 size byte + 256 bytes

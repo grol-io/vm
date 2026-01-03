@@ -55,7 +55,7 @@ enum { StackSize = 256 };
 int64_t sys_write(Operation *memory, int addr, int offset) {
   // All bytes are contiguous in memory (including the length byte)
   uint8_t *data = ((uint8_t *)&memory[addr]) + offset;
-  int length = *data++;
+  int length = (int)(*data++) + 1;
   if (length == 0) {
     return 0;
   }
@@ -73,7 +73,7 @@ int64_t sys_write(Operation *memory, int addr, int offset) {
 }
 
 int64_t sys_read(Operation *memory, int addr, int n) {
-  if (n <= 0 || n > 255) {
+  if (n <= 0 || n > 256) {
     fprintf(stderr, "Invalid read size for str8: %d\n", n);
     return -1;
   }
@@ -83,7 +83,7 @@ int64_t sys_read(Operation *memory, int addr, int n) {
     perror("Failed to read");
     return -1;
   }
-  *data = (uint8_t)r;
+  *data = (uint8_t)(r - 1);
   return r;
 }
 

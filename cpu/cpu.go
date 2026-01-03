@@ -124,7 +124,7 @@ func (c *CPU) LoadProgram(f *os.File) error {
 const unknownSyscallAbortCode = 99
 
 func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
-	if n <= 0 || n > 255 {
+	if n <= 0 || n > 256 {
 		panic(fmt.Sprintf("invalid read size for str8: %d", n))
 	}
 	if len(memory) == 0 {
@@ -147,7 +147,7 @@ func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
 		return 0
 	}
 	// Set the length byte
-	memAsBytes[byteOffset] = byte(r)
+	memAsBytes[byteOffset] = byte(r - 1)
 	return int64(r)
 }
 
@@ -162,7 +162,7 @@ func sysWrite(out io.Writer, memory []Operation, addr, offset int) int64 {
 	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
 
 	byteOffset := addr*OperationSize + offset
-	length := int(memAsBytes[byteOffset])
+	length := int(memAsBytes[byteOffset]) + 1
 	if length == 0 {
 		return 0
 	}

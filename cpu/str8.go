@@ -20,13 +20,13 @@ func Serialize(b []byte) Operation {
 // (like the cvm does).
 func SerializeStr8(b []byte) []Operation {
 	l := len(b)
-	if l == 0 || l > 255 {
-		panic(fmt.Sprintf("str8 can only handle strings 1-255 bytes, got %d", l))
+	if l == 0 || l > 256 {
+		panic(fmt.Sprintf("str8 can only handle strings 1-256 bytes, got %d", l))
 	}
 	var result []Operation
 	// First word: up to 7 bytes of data + length byte
 	firstChunkSize := min(l, 7)
-	result = append(result, Serialize(b[:firstChunkSize])<<8|Operation(l))
+	result = append(result, Serialize(b[:firstChunkSize])<<8|Operation(l-1))
 	// Remaining bytes in chunks of 8
 	remaining := b[firstChunkSize:]
 	for len(remaining) > 0 {

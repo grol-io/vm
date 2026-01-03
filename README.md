@@ -36,7 +36,7 @@ Syscall:
 
 Assembler only:
 - `data` for a 64 bit word
-- `str8` for string (with the double or backtick quotes)
+- `str8` for string (with the double or backtick quotes) length 1-256 (inclusive) stored as first byte.
 - on a line preceding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
 - `.space` for multiple 0 initialized 64 bit words
 - `Var v1 v2 ...` virtual instruction that generates a `Push` instruction with the number of identifiers provided and defines labels for said variables starting at 0 (which will start with the value of the accumulator while the rest will start 0 initialized).
