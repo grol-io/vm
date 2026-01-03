@@ -73,7 +73,7 @@ int64_t sys_write8(Operation *memory, int addr, int offset) {
 }
 
 int64_t sys_write(Operation *memory, int addr, int length) {
-  // All bytes are contiguous in memory (including the length byte)
+  // All bytes are contiguous in memory (no length byte prefix unlike for str8)
   uint8_t *data = ((uint8_t *)&memory[addr]);
   if (length == 0) {
     return 0;
@@ -365,7 +365,7 @@ void run_program(CPU *cpu) {
         cpu->accumulator = sys_write(is_stack ? stack : cpu->program, (int)addr,
                                      cpu->accumulator);
         if (cpu->accumulator == -1) {
-          fprintf(stderr, "ERR: Write syscall failed at PC %" PRId64 "\n",
+          fprintf(stderr, "ERR: WriteN syscall failed at PC %" PRId64 "\n",
                   cpu->pc);
         }
       } break;

@@ -35,7 +35,7 @@ Syscall:
   - `ReadN` (4) reads from stdin up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
   and memory as this returns the length and does not write str8 len byte first).
   - `WriteN` (5) writes A bytes to stdout from memory pointed to by the operand.
-  - `Sleep` (4) argument in milliseconds
+  - `Sleep` (6) argument in milliseconds
 
 Assembler only:
 - `data` for a 64 bit word
