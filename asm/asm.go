@@ -235,7 +235,10 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			if err != nil {
 				return log.FErrf("Failed to parse .space argument %q: %v", args[0], err)
 			}
-			for i := 0; i < int(count); i++ {
+			if count <= 0 {
+				return log.FErrf(".space argument must be positive, got %d", count)
+			}
+			for range count {
 				result = append(result, Line{
 					Op:   cpu.Operation(0),
 					Data: true,
