@@ -18,6 +18,6 @@ pow:
     muls b
     stores result
     incrs -1 e
-    jne 0 loop
+    jgt 0 loop
     loads result
     return

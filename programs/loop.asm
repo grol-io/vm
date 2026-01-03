@@ -3,6 +3,7 @@
 loop:
     addI -1
     jne 0 loop
+    # just extra code to make sure jne works
     loadI 1
     jne 0 end
     # this should be skipped
