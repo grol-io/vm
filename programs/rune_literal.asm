@@ -4,7 +4,7 @@
     ShiftI 8
     AddI 4 # len
     StoreR buf
-    Sys write buf
+    Sys Write8 buf
     Sys exit 0
 buf:
     data 0

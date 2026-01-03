@@ -43,7 +43,9 @@ enum Instruction {
 
 enum Syscall {
   Exit = 1,
-  Read,
-  Write,
+  Read8,
+  Write8,
+  ReadN,
+  WriteN,
   Sleep,
 };

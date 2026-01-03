@@ -30,8 +30,11 @@ Short Data/string format:
 Syscall:
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
   - `Exit` (1) with value from arg
-  - `Read` (2) reads from stdin up to A bytes into param address/stack buffer.
-  - `Write` (3) writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
+  - `Read8` (2) reads from stdin up to A bytes into param address/stack buffer str8 format (so max 255 bytes).
+  - `Write8` (3) writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
+  - `ReadN` (4) reads from stdin up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
+  and memory as this returns the length and does not write str8 len byte first).
+  - `WriteN` (5) writes A bytes to stdout from memory pointed to by the operand.
   - `Sleep` (4) argument in milliseconds
 
 Assembler only:

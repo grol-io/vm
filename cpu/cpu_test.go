@@ -468,7 +468,7 @@ func TestSysPrint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			n := sysWrite(&buf, tt.memory, tt.addr, tt.offset)
+			n := sysWrite8(&buf, tt.memory, tt.addr, tt.offset)
 			if n != tt.wantN {
 				t.Errorf("sysPrint() returned %d, want %d", n, tt.wantN)
 			}
@@ -504,7 +504,7 @@ func BenchmarkSysWrite(b *testing.B) {
 
 	for b.Loop() {
 		buf.Reset()
-		sysWrite(&buf, memory, 0, 0)
+		sysWrite8(&buf, memory, 0, 0)
 	}
 	str := buf.String()
 	if str != "Hello\nWorld!\n" {
@@ -528,7 +528,7 @@ func BenchmarkSysWriteNoBuffer(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		sysWrite(discard, memory, 0, 0)
+		sysWrite8(discard, memory, 0, 0)
 	}
 }
 
@@ -546,6 +546,6 @@ func BenchmarkSysRead(b *testing.B) {
 
 	for b.Loop() {
 		reader.Reset(input)
-		sysRead(reader, memory, 0, len(input))
+		sysRead8(reader, memory, 0, len(input))
 	}
 }

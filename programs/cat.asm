@@ -2,19 +2,15 @@
 ; test for instance with 1234567_10_234567_20_234567_30_234567_40
 
 read:
-    LoadI 32 ; read up to 32 bytes at a time
-    Sys Read buf
+    LoadI 4096 ; read up to 4096 bytes at a time; note this match the full stack size (512*8 bytes)
+    SysS ReadN -1 ; hack reads to the blank stack (stack_ptr -  -1 = next stack slot)
     JGT 0 write ; proceed to write if any bytes were read
     JLT 0 error ; jump if error
     ; Last case 0 read == normal EOF case, no error:
     Sys Exit 0
 write:
-    Sys Write buf
+    SysS WriteN -1 ; same buffer as read
     JGT 0 read
     ; write error
 error:
     Sys Exit 1
-
-; need (32+1) bytes for str8 so 5 words.
-buf:
-    .space 5 ; 5 words = 40 bytes to fit str8 size byte + 32 bytes
