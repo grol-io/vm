@@ -38,7 +38,7 @@ itoa: ; prints accumulator as a decimal string
     LoadI 1
     StoreS sign
     LoadS num
-    JGT 0 digits_loop
+    JGTE 0 digits_loop
     ; else mark/remember as negative to add the minus sign at the end and multiply by -1 each digit.
     LoadI -1
     StoreS sign
@@ -54,7 +54,7 @@ digits_loop:
     JNE 0 digits_loop
 done:
     LoadS sign ; sign
-    JGT 0 finish_str
+    JEQ 1 finish_str ; positive, so done/no need to add the minus sign
     LoadI '-'
     StoreSB buf idx ; stores '-' in buf at offset indicated by idx
     IncrS -1 idx ; idx by -1
