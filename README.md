@@ -7,7 +7,7 @@
 
 Virtual Machine experiment
 
-This is an early experiment and comparison and optimization of a miniature assembler and VM with the following (sort of but less and less minimalistic) instructions:
+This is an experiment and comparison and optimization of a miniature assembler and VM with the following (sort of but less and less minimalistic) instructions:
 
 Immediate operand instructions:
 - `LoadI`, `AddI`, `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI` (though they can also load the relative address of a label as value)
