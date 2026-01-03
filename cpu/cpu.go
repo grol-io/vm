@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"fortio.org/log"
@@ -59,7 +61,13 @@ const (
 	HEADER = "\x01GROL VM"
 )
 
+// so vm run cat | false detects the error instead of silently dying.
+func signalSetup() {
+	signal.Ignore(syscall.SIGPIPE)
+}
+
 func Run(files ...string) int {
+	signalSetup()
 	cpu := &CPU{}
 	log.Infof("Starting CPU - size of operation: %d bytes", binary.Size(Operation(0)))
 	for _, file := range files {
@@ -107,8 +115,30 @@ func (c *CPU) LoadProgram(f *os.File) error {
 
 const unknownSyscallAbortCode = 99
 
-// sysPrint prints the str8 bytes and returns the number of bytes it did output.
-func sysPrint(out io.Writer, memory []Operation, addr, offset int) int64 {
+func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
+	if n <= 0 || n > 255 {
+		panic(fmt.Sprintf("invalid read size for str8: %d", n))
+	}
+	buf := make([]byte, n)
+	r, err := in.Read(buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		log.Errf("Failed to read: %v", err)
+		return -1
+	}
+	log.LogVf("Read %d bytes from stdin", r)
+	if r == 0 {
+		return 0
+	}
+	ops := SerializeStr8(buf[:r])
+	for i, op := range ops {
+		memory[addr+i] = op
+	}
+	return int64(r)
+}
+
+// sysWrite prints the str8 bytes and returns the number of bytes it did output.
+func sysWrite(out io.Writer, memory []Operation, addr, offset int) int64 {
+	log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
 	op := memory[addr]
 	op >>= (offset * 8)
 	l := int(op & 0xFF)
@@ -133,7 +163,10 @@ func sysPrint(out io.Writer, memory []Operation, addr, offset int) int64 {
 		remaining -= chunkSize
 		wordIdx++
 	}
+	bufBytes := buf.Bytes()
+	log.LogVf("Before writing bytes: %d %d %q", l, len(bufBytes), bufBytes)
 	n, err := out.Write(buf.Bytes())
+	log.LogVf("Wrote %d bytes to stdout (err %v)", n, err)
 	if err != nil {
 		log.Errf("Failed to output str8: %v", err)
 		return -1
@@ -155,13 +188,20 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 	case Sleep:
 		time.Sleep(time.Duration(operand) * time.Millisecond)
 		return accumulator, false
+	case Read:
+		if isStack {
+			addr := stackPtr - int(operand)
+			return sysRead(os.Stdin, stack, addr, int(accumulator)), false
+		}
+		addr := int64(pc) + operand
+		return sysRead(os.Stdin, memory, int(addr), int(accumulator)), false
 	case Write:
 		if isStack {
 			addr := stackPtr - int(operand) + int(accumulator)/8
-			return sysPrint(os.Stdout, stack, addr, int(accumulator%8)), false
+			return sysWrite(os.Stdout, stack, addr, int(accumulator%8)), false
 		}
 		addr := int64(pc) + operand
-		return sysPrint(os.Stdout, memory, int(addr), 0), false
+		return sysWrite(os.Stdout, memory, int(addr), 0), false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}

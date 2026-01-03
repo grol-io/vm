@@ -29,10 +29,10 @@ Short Data/string format:
 
 Syscall:
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
-  - 1: Exit with value from arg
-  - 2: Sleep argument in milliseconds
-  - 3: Write writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
-  - more to come
+  - `Exit` (1) with value from arg
+  - `Read` (2) reads from stdin up to A bytes into param address/stack buffer.
+  - `Write` (3) writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
+  - `Sleep` (4) argument in milliseconds
 
 Assembler only:
 - `data` for a 64 bit word

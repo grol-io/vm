@@ -165,40 +165,14 @@ func sysCalls(op *cpu.Operation, args []string) (int, string) {
 	return 0, noLabel
 }
 
-// serialize serializes numbytes (<= 8) bytes of data into 1 int64.
-func serialize(b []byte) cpu.Operation {
-	if len(b) == 0 || len(b) > 8 {
-		panic("unsupported number of bytes")
-	}
-	var result uint64
-	for i := len(b) - 1; i >= 0; i-- {
-		result <<= 8
-		result |= uint64(b[i])
-	}
-	return cpu.Operation(result) //nolint:gosec // no overflow, just bits shoving unsigned to signed.
-}
-
 func serializeStr8(b []byte) []Line {
-	l := len(b)
-	if l == 0 || l > 255 {
-		panic("str8 can only handle strings 1-255 bytes")
-	}
-	var result []Line
-	// First word: up to 7 bytes of data + length byte
-	firstChunkSize := min(l, 7)
-	result = append(result, Line{
-		Op:   serialize(b[:firstChunkSize])<<8 | cpu.Operation(l),
-		Data: true,
-	})
-	// Remaining bytes in chunks of 8
-	remaining := b[firstChunkSize:]
-	for len(remaining) > 0 {
-		chunkSize := min(len(remaining), 8)
+	ops := cpu.SerializeStr8(b)
+	result := make([]Line, 0, len(ops))
+	for _, op := range ops {
 		result = append(result, Line{
-			Op:   serialize(remaining[:chunkSize]),
+			Op:   op,
 			Data: true,
 		})
-		remaining = remaining[chunkSize:]
 	}
 	return result
 }
