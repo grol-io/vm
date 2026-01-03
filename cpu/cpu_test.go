@@ -479,3 +479,73 @@ func TestSysPrint(t *testing.T) {
 		})
 	}
 }
+
+// DiscardWriter implements io.Writer and discards all written data without allocating.
+type DiscardWriter struct{}
+
+func (DiscardWriter) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func BenchmarkSysWrite(b *testing.B) {
+	// Pre-allocate memory to avoid allocation counting noise
+	memory := make([]Operation, 4)
+	// Set up a 13-byte string: "Hello\nWorld!\n"
+	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
+	memory[0] = Operation(0x570A6F6C6C65480D)
+	// Second word: "orld!\n" (6 bytes)
+	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
+	memory[1] = Operation(0x0A21646C726F)
+
+	var buf bytes.Buffer
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		buf.Reset()
+		sysWrite(&buf, memory, 0, 0)
+	}
+	str := buf.String()
+	if str != "Hello\nWorld!\n" {
+		b.Errorf("sysWrite() output = %q, want %q", str, "Hello\nWorld!\n")
+	}
+}
+
+func BenchmarkSysWriteNoBuffer(b *testing.B) {
+	// Pre-allocate memory to avoid allocation counting noise
+	memory := make([]Operation, 4)
+	// Set up a 13-byte string: "Hello\nWorld!\n"
+	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
+	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
+	memory[0] = Operation(0x570A6F6C6C65480D)
+	// Second word: "orld!\n" (6 bytes)
+	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
+	memory[1] = Operation(0x0A21646C726F)
+
+	var discard DiscardWriter
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		sysWrite(discard, memory, 0, 0)
+	}
+}
+
+func BenchmarkSysRead(b *testing.B) {
+	// Pre-allocate memory to avoid allocation counting noise
+	memory := make([]Operation, 4)
+
+	// Pre-allocate a fixed byte array to avoid allocation in the benchmark loop
+	input := []byte("Hello")
+	// Pre-create the reader outside the loop (allocated once before timing)
+	reader := bytes.NewReader(input)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		reader.Reset(input)
+		sysRead(reader, memory, 0, len(input))
+	}
+}
