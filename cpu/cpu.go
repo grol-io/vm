@@ -153,10 +153,7 @@ func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
 
 // sysWrite writes the str8 bytes and returns the number of bytes it did output.
 func sysWrite(out io.Writer, memory []Operation, addr, offset int) int64 {
-	if Debug {
-		log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
-	}
-
+	log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
 	if len(memory) == 0 {
 		panic("memory slice is empty")
 	}
