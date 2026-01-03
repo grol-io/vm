@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-
 #define MAX_ITOA 21
 void itoa_println(int64_t num) {
   int sign = (num < 0) ? -1 : 1;
@@ -11,7 +10,7 @@ void itoa_println(int64_t num) {
   int i = MAX_ITOA - 1;
   buf[i--] = '\n';
   do {
-    buf[i--] = '0' + sign*(num % 10);
+    buf[i--] = '0' + sign * (num % 10);
     num /= 10;
   } while (num != 0);
   if (sign < 0) {
