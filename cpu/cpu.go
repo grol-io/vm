@@ -163,9 +163,6 @@ func sysWrite(out io.Writer, memory []Operation, addr, offset int) int64 {
 
 	byteOffset := addr*OperationSize + offset
 	length := int(memAsBytes[byteOffset]) + 1
-	if length == 0 {
-		return 0
-	}
 	if log.LogVerbose() {
 		// this would alloc a slice so we avoid it unless verbose logging is enabled
 		log.LogVf("Before writing bytes: %d %q", length, memAsBytes[byteOffset+1:byteOffset+1+length])

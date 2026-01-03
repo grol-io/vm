@@ -56,9 +56,6 @@ int64_t sys_write(Operation *memory, int addr, int offset) {
   // All bytes are contiguous in memory (including the length byte)
   uint8_t *data = ((uint8_t *)&memory[addr]) + offset;
   int length = (int)(*data++) + 1;
-  if (length == 0) {
-    return 0;
-  }
   ssize_t n = write(STDOUT_FILENO, data, length);
   if (n < 0) {
     perror("Failed to write");
