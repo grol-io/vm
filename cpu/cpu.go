@@ -1,4 +1,4 @@
-// Package cpu provides the CPU implementation for the Grol VM, everything to running
+// Package cpu provides the CPU implementation for the Grol VM, everything related to running
 // the virtual machine instructions (and defining the instruction set).
 package cpu
 
