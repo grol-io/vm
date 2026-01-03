@@ -215,7 +215,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			if narg == 0 {
 				return log.FErrf("Expecting at least 1 argument for %s, got none", instr)
 			}
-		case "incrr", "incrs", "sys", "syss", "storesb":
+		case "incrr", "incrs", "sys", "syss", "storesb", "jne", "jeq", "jlt", "jgt", "jgte", "jlte":
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
 			}
@@ -349,6 +349,19 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if v < -128 || v > 127 {
 					return log.FErrf("IncrR immediate value out of range (-128 to 127): %d", v)
 				}
+				op = op.SetOperand(cpu.ImmediateData(v))
+				is48bit = true
+			case cpu.JNE, cpu.JEQ, cpu.JLT, cpu.JGT, cpu.JGTE, cpu.JLTE:
+				// 2 arguments: value to compare and label for destination
+				label = args[1]
+				v, err := parseArg(args[0])
+				if err != nil {
+					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
+				}
+				if v < 0 || v > 255 {
+					return log.FErrf("Jump comparison value out of range (0 to 255): %d", v)
+				}
+				// Encode as: lower 8 bits = value, upper bits = destination (to be filled in by emitCode)
 				op = op.SetOperand(cpu.ImmediateData(v))
 				is48bit = true
 			default:

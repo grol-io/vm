@@ -24,6 +24,11 @@ cat-test: vm grol_cvm
 	cmp $(SAMPLE_CAT) /tmp/cat_output
 	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
+	echo -n "A" | ./vm run -quiet programs/cat.vm > /tmp/cat_single
+	echo -n "A" > /tmp/cat_expected
+	cmp /tmp/cat_expected /tmp/cat_single
+	echo -n "A" | ./grol_cvm programs/cat.vm > /tmp/cat_single
+	cmp /tmp/cat_expected /tmp/cat_single
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm

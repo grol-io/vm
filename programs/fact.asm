@@ -16,24 +16,26 @@
 
 factrec: ; recursive factorial
     var n
-    subi 1
-    jnz more
+    jgte 2 more
     loadI 1
     return
 more:
+    subi 1
     call factrec
     muls n
     return
 
 facti: ; iterative factorial
-    var result n
-    subi 1
-    storeS n
+    var n result
+    loadI 1
+    stores result
   loop:
+    loadS n
+    jlte 1 end
     muls result
     storeS result
     incrs -1 n
-    jnz loop
+    jumpr loop
 end:
     loadS result
     return
