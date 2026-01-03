@@ -1,3 +1,5 @@
+// Package cpu provides the CPU implementation for the Grol VM, everything to running
+// the virtual machine instructions (and defining the instruction set).
 package cpu
 
 import (
