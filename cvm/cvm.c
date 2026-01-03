@@ -407,7 +407,9 @@ void run_program(CPU *cpu) {
 #define INSTR_SIZE sizeof(Operation)
 
 int main(int argc, char **argv) {
+#ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+#endif
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <program.vm>\n", argv[0]);
     return 1;
