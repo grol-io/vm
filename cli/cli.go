@@ -1,3 +1,5 @@
+// Package cli provides the command-line interface for the Grol VM dispatching commands
+// to either compile (assembler), run (execute), or generate headers for the C VM.
 package cli
 
 import (

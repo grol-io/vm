@@ -4,8 +4,9 @@
 read:
     LoadI 32 ; read up to 32 bytes at a time
     Sys Read buf
-    SubI 1
+    SubI 1 ; so both 0 and -1 skip the write
     JPOS write
+    AddI 1 ; back to 0 vs -1
     JNEG error
     ; normal EOF case, no error:
     Sys Exit 0
