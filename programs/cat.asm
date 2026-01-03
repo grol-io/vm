@@ -17,8 +17,4 @@ error:
 
 ; need (32+1) bytes for str8 so 5 words.
 buf:
-    data 0
-    data 0
-    data 0
-    data 0
-    data 0
+    .space 5 ; 5 words = 40 bytes to fit str8 size byte + 32 bytes

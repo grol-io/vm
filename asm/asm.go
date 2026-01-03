@@ -229,6 +229,23 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		data := true
 		is48bit := false
 		switch instr {
+		case ".space":
+			// reserve multiple 0 initialized words
+			count, err := parseArg(args[0])
+			if err != nil {
+				return log.FErrf("Failed to parse .space argument %q: %v", args[0], err)
+			}
+			if count <= 0 {
+				return log.FErrf(".space argument must be positive, got %d", count)
+			}
+			for range count {
+				result = append(result, Line{
+					Op:   cpu.Operation(0),
+					Data: true,
+				})
+			}
+			pc += cpu.ImmediateData(count)
+			continue
 		case "data":
 			// This is using the full 64-bit Operation as data instead of 56+8. There is no instruction.
 			v, err := parseArg(args[0])
