@@ -2,12 +2,12 @@
 ; depends on itoa, so compile with
 ; vm compile programs/fact.asm programs/itoa.asm
 
-    sys write fact_rec_str
+    Sys Write8 fact_rec_str
     loadI 5
     call print
     call factrec
     call itoa
-    sys write fact_iter_str
+    Sys Write8 fact_iter_str
     loadI 7
     call print
     call facti
@@ -43,7 +43,7 @@ end:
 ; print accumulator and put its value back (instead of the bytes written returned by itoa)
 print:
     var acc
-    sys write fact_str
+    Sys Write8 fact_str
     loadS acc
     call itoa
     loadS acc

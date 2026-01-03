@@ -63,5 +63,5 @@ finish_str:
     SubS idx
     StoreSB buf idx ; first byte of str8 is the length (to write)
     LoadS idx ; byte offset to find the start of the str8
-    SysS write buf
+    SysS write8 buf
     Return ; -> Ret 6 to pop the 6 (`var`s) and return address to PC
