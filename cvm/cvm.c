@@ -135,27 +135,60 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("AndI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator &= operand;
       break;
-    case JNZ:
-      DEBUG_PRINT("JNZ %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
-      if (cpu->accumulator != 0) {
-        cpu->pc += operand;
+    case JNE: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JNE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator != value) {
+        cpu->pc += addr;
         continue;
       }
-      break;
-    case JNEG:
-      DEBUG_PRINT("JNEG %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
-      if (cpu->accumulator < 0) {
-        cpu->pc += operand;
+    } break;
+    case JEQ: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JEQ at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator == value) {
+        cpu->pc += addr;
         continue;
       }
-      break;
-    case JPOS:
-      DEBUG_PRINT("JPOS %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
-      if (cpu->accumulator >= 0) {
-        cpu->pc += operand;
+    } break;
+    case JLT: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JLT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator < value) {
+        cpu->pc += addr;
         continue;
       }
-      break;
+    } break;
+    case JGT: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JGT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator > value) {
+        cpu->pc += addr;
+        continue;
+      }
+    } break;
+    case JGTE: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JGTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator >= value) {
+        cpu->pc += addr;
+        continue;
+      }
+    } break;
+    case JLTE: {
+      int64_t addr = operand >> 8;
+      int64_t value = operand & 0xFF;
+      DEBUG_PRINT("JLTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64 "\n", cpu->pc, addr, value);
+      if (cpu->accumulator <= value) {
+        cpu->pc += addr;
+        continue;
+      }
+    } break;
     case JumpR:
       DEBUG_PRINT("JumpR %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->pc += operand;

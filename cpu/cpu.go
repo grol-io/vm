@@ -275,38 +275,89 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			if Debug {
 				log.Debugf("AndI    at PC: %d, value: %d -> %d", pc, op.OperandInt64(), accumulator)
 			}
-		case JNZ:
-			if accumulator != 0 {
+		case JNE:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator != value {
 				if Debug {
-					log.Debugf("JNZ     at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JNE     at PC: %d, jumping to PC: +%d", pc, addr)
 				}
-				pc += op.Operand()
+				pc += ImmediateData(addr)
 				continue
 			}
 			if Debug {
-				log.Debugf("JNZ     at PC: %d, not jumping", pc)
+				log.Debugf("JNE     at PC: %d, not jumping", pc)
 			}
-		case JNEG:
-			if accumulator < 0 {
+		case JEQ:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator == value {
 				if Debug {
-					log.Debugf("JNEG    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JEQ     at PC: %d, jumping to PC: +%d", pc, addr)
 				}
-				pc += op.Operand()
+				pc += ImmediateData(addr)
 				continue
 			}
 			if Debug {
-				log.Debugf("JNEG    at PC: %d, not jumping", pc)
+				log.Debugf("JEQ     at PC: %d, not jumping", pc)
 			}
-		case JPOS:
-			if accumulator >= 0 {
+		case JLT:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator < value {
 				if Debug {
-					log.Debugf("JPOS    at PC: %d, jumping to PC: +%d", pc, op.OperandInt64())
+					log.Debugf("JLT     at PC: %d, jumping to PC: +%d", pc, addr)
 				}
-				pc += op.Operand()
+				pc += ImmediateData(addr)
 				continue
 			}
 			if Debug {
-				log.Debugf("JPOS    at PC: %d, not jumping", pc)
+				log.Debugf("JLT     at PC: %d, not jumping", pc)
+			}
+		case JGT:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator > value {
+				if Debug {
+					log.Debugf("JGT     at PC: %d, jumping to PC: +%d", pc, addr)
+				}
+				pc += ImmediateData(addr)
+				continue
+			}
+			if Debug {
+				log.Debugf("JGT     at PC: %d, not jumping", pc)
+			}
+		case JGTE:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator >= value {
+				if Debug {
+					log.Debugf("JGTE    at PC: %d, jumping to PC: +%d", pc, addr)
+				}
+				pc += ImmediateData(addr)
+				continue
+			}
+			if Debug {
+				log.Debugf("JGTE    at PC: %d, not jumping", pc)
+			}
+		case JLTE:
+			param := op.OperandInt64()
+			addr := param >> 8
+			value := param & 0xFF
+			if accumulator <= value {
+				if Debug {
+					log.Debugf("JLTE    at PC: %d, jumping to PC: +%d", pc, addr)
+				}
+				pc += ImmediateData(addr)
+				continue
+			}
+			if Debug {
+				log.Debugf("JLTE    at PC: %d, not jumping", pc)
 			}
 		case JumpR:
 			if Debug {

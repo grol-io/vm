@@ -15,9 +15,12 @@ const (
 	ModI   // A = A % param
 	ShiftI // A = A << param
 	AndI   // A = A & param
-	JNZ    // Jump if A != 0
-	JNEG   // Jump if A < 0
-	JPOS   // Jump if A >= 0
+	JNE    // Jump if A != param
+	JEQ    // Jump if A == param
+	JLT    // Jump if A < param
+	JGT    // Jump if A > param
+	JGTE   // Jump if A >= param
+	JLTE   // Jump if A <= param
 	JumpR  // Unconditional jump to relative address
 	LoadR  // Load from relative address (A = *[PC + param])
 	AddR   // A = A + *[PC + param]
