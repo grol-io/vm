@@ -36,6 +36,8 @@ wc-test: vm grol_cvm
 	wc -l < $(SAMPLE_CAT) | awk '{print $$1}' > /tmp/wc_expected
 	diff /tmp/wc_expected /tmp/wc_output
 	./grol_cvm programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
+	od -c /tmp/wc_expected
+	od -c /tmp/wc_output
 	diff /tmp/wc_expected /tmp/wc_output
 
 run: vm
