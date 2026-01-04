@@ -531,6 +531,11 @@ int main(int argc, char **argv) {
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 #endif
+#ifdef _WIN32
+  // Force binary mode on Windows to prevent \n -> \r\n conversion
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <program.vm>\n", argv[0]);
     return 1;
