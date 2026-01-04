@@ -1,8 +1,8 @@
 ; wc.asm: like `wc -l`, counts newline characters in stdin and prints the count
 ; Compile with: vm compile programs/wc.asm programs/itoa.asm
 
-    ; reserve 256 bytes for buffer (b1-b31+buf)=32 words=32*8=256 bytes
-    Var count bytes_read b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31 buf; buf extends into the b*
+    ; reserve 256 bytes for buffer (32 words * 8 bytes = 256 bytes)
+    Var count bytes_read buf[32]
     LoadI 0
     StoreS count
 
