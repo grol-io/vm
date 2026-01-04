@@ -24,11 +24,19 @@ cat-test: vm grol_cvm
 	cmp $(SAMPLE_CAT) /tmp/cat_output
 	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
-	echo -n "A" | ./vm run -quiet programs/cat.vm > /tmp/cat_single
-	echo -n "A" > /tmp/cat_expected
-	cmp /tmp/cat_expected /tmp/cat_single
-	echo -n "A" | ./grol_cvm programs/cat.vm > /tmp/cat_single
-	cmp /tmp/cat_expected /tmp/cat_single
+	echo -n "A" > /tmp/cat_input
+	./vm run -quiet programs/cat.vm < /tmp/cat_input > /tmp/cat_single
+	cmp /tmp/cat_input /tmp/cat_single
+	./grol_cvm programs/cat.vm < /tmp/cat_input > /tmp/cat_single
+	cmp /tmp/cat_input /tmp/cat_single
+
+wc-test: vm grol_cvm
+	./vm compile programs/wc.asm programs/itoa.asm
+	./vm run -quiet programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
+	wc -l < $(SAMPLE_CAT) | awk '{print $$1}' > /tmp/wc_expected
+	diff /tmp/wc_expected /tmp/wc_output
+	./grol_cvm programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
+	diff /tmp/wc_expected /tmp/wc_output
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
@@ -101,7 +109,7 @@ install:
 	vm version
 
 
-test: vm unit-tests itoa-test fact cat-test
+test: vm unit-tests itoa-test fact cat-test wc-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -121,7 +129,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test
 
 show_cpu_profile:
 	-pkill pprof

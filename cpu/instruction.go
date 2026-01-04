@@ -50,7 +50,7 @@ const (
 	IncrS  // A = *[SP - param1] + param0; *[SP - param1] = A
 	IdivS  // A = *[SP - param] % A; *[SP - param] /= A
 
-	// LoadSB  // load byte from stack with param0 = base, param1 = byte offset.
+	LoadSB // load byte from stack with param0 = base, param1 = byte offset.
 
 	StoreSB // store byte to stack with param0 = stack base, param1 = stack indicating byte offset
 

@@ -37,6 +37,7 @@ enum Instruction {
   DivS,
   IncrS,
   IdivS,
+  LoadSB,
   StoreSB,
   SysS,
 };
