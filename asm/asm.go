@@ -265,35 +265,31 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		case "var":
 			data = false
 			clear(varmap)
-			index := 0
-			totalWords := 0
-
+			var totalWords int64
 			for _, arg := range args {
+				count := int64(1)
 				if idx := strings.Index(arg, "["); idx >= 0 {
 					// Parse var[N] syntax: reserve N slots with label pointing to the last
 					varName := arg[:idx]
 					countStr := strings.TrimSuffix(arg[idx+1:], "]")
-					count, err := parseArg(countStr)
+					var err error
+					count, err = parseArg(countStr)
 					if err != nil {
 						return log.FErrf("Failed to parse var array size %q: %v", countStr, err)
 					}
-					if count <= 0 {
-						return log.FErrf("var array size must be positive: %d", count)
+					if count <= 2 {
+						return log.FErrf("var array size must be greater than 2: %d", count)
 					}
-					varmap[varName] = cpu.ImmediateData(index + int(count) - 1)
-					index += int(count)
-					totalWords += int(count)
+					varmap[varName] = cpu.ImmediateData(totalWords + count - 1)
 				} else {
 					// Single variable
-					varmap[arg] = cpu.ImmediateData(index)
-					index++
-					totalWords++
+					varmap[arg] = cpu.ImmediateData(totalWords)
 				}
+				totalWords += count
 			}
-
 			op = op.SetOpcode(cpu.Push)
 			op = op.SetOperand(cpu.ImmediateData(totalWords - 1))
-			returnN = totalWords
+			returnN = int(totalWords)
 			log.Debugf("Var -> Push %d and defined variables: %v", totalWords-1, varmap)
 		case "param":
 			// define more stack labels
