@@ -265,14 +265,12 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		case "var":
 			data = false
 			clear(varmap)
+			index := 0
 			totalWords := 0
-			varNames := []string{}
-			varReserves := []int{}
 
-			// First pass: collect var names and reserve counts
 			for _, arg := range args {
 				if idx := strings.Index(arg, "["); idx >= 0 {
-					// Parse var[N] syntax: creates N unnamed slots and a label pointing just after them
+					// Parse var[N] syntax: reserve N slots with label pointing to the last
 					varName := arg[:idx]
 					countStr := strings.TrimSuffix(arg[idx+1:], "]")
 					count, err := parseArg(countStr)
@@ -282,28 +280,15 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					if count <= 0 {
 						return log.FErrf("var array size must be positive: %d", count)
 					}
-					varNames = append(varNames, varName)
-					varReserves = append(varReserves, int(count))
+					varmap[varName] = cpu.ImmediateData(index + int(count) - 1)
+					index += int(count)
 					totalWords += int(count)
 				} else {
-					varNames = append(varNames, arg)
-					varReserves = append(varReserves, 1)
+					// Single variable
+					varmap[arg] = cpu.ImmediateData(index)
+					index++
 					totalWords++
 				}
-			}
-
-			// Second pass: assign indices
-			// For var[N], the label points to the last index of the N reserved words
-			index := 0
-			for i, varName := range varNames {
-				if varReserves[i] > 1 {
-					// For arrays, label points to the last slot in the reserved space
-					varmap[varName] = cpu.ImmediateData(index + varReserves[i] - 1)
-				} else {
-					// For single variables, label points to that variable
-					varmap[varName] = cpu.ImmediateData(index)
-				}
-				index += varReserves[i]
 			}
 
 			op = op.SetOpcode(cpu.Push)
