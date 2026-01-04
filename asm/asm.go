@@ -277,8 +277,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					if err != nil {
 						return log.FErrf("Failed to parse var array size %q: %v", countStr, err)
 					}
-					if count <= 2 {
-						return log.FErrf("var array size must be greater than 2: %d", count)
+					if count <= 1 {
+						return log.FErrf("var array size must be greater than 1: %d", count)
 					}
 					varmap[varName] = cpu.ImmediateData(totalWords + count - 1)
 				} else {
