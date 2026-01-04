@@ -265,13 +265,32 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		case "var":
 			data = false
 			clear(varmap)
-			op = op.SetOpcode(cpu.Push)
-			op = op.SetOperand(cpu.ImmediateData(narg - 1))
-			returnN = narg
-			for i := range narg {
-				varmap[args[i]] = cpu.ImmediateData(i)
+			var totalWords int64
+			for _, arg := range args {
+				count := int64(1)
+				if idx := strings.Index(arg, "["); idx >= 0 {
+					// Parse var[N] syntax: reserve N slots with label pointing to the last
+					varName := arg[:idx]
+					countStr := strings.TrimSuffix(arg[idx+1:], "]")
+					var err error
+					count, err = parseArg(countStr)
+					if err != nil {
+						return log.FErrf("Failed to parse var array size %q: %v", countStr, err)
+					}
+					if count <= 1 {
+						return log.FErrf("var array size must be greater than 1: %d", count)
+					}
+					varmap[varName] = cpu.ImmediateData(totalWords + count - 1)
+				} else {
+					// Single variable
+					varmap[arg] = cpu.ImmediateData(totalWords)
+				}
+				totalWords += count
 			}
-			log.Debugf("Var -> Push %d and defined variables: %v", narg-1, varmap)
+			op = op.SetOpcode(cpu.Push)
+			op = op.SetOperand(cpu.ImmediateData(totalWords - 1))
+			returnN = int(totalWords)
+			log.Debugf("Var -> Push %d and defined variables: %v", totalWords-1, varmap)
 		case "param":
 			// define more stack labels
 			start := returnN + 1 // +1 to skip over the return PC
