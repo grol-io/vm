@@ -601,6 +601,20 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 				log.Debugf("IdivS   at PC: %d, offset: %d, value: %d -> %d, remainder: %d - SP = %d %v",
 					pc, offset, current, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
+		case LoadSB:
+			arg := op.Operand()
+			offset := int(arg >> 8)              // base offset (highest stack offset in the span)
+			bytesStackIndex := uint8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			bytesOffset := int(stack[stackPtr-int(bytesStackIndex)])
+			wordOffset := bytesOffset / 8
+			value := stack[stackPtr-offset+wordOffset]
+			innerOffsetBits := uint((bytesOffset % 8) * 8)                 //nolint:gosec // (bytesOffset % 8) is always 0-7, so *8 is 0-56
+			accumulator = int64((uint64(value) >> innerOffsetBits) & 0xff) //nolint:gosec // shift amount is always 0-56
+			if Debug {
+				log.Debugf("LoadSB at PC: %d, baseOffset: %d, bytesStackIndex: %d, bytesOffset: %d,"+
+					" value: %x -> accumulator: %x - SP = %d",
+					pc, offset, bytesStackIndex, bytesOffset, value, accumulator, stackPtr)
+			}
 		case StoreSB:
 			arg := op.Operand()
 			offset := int(arg >> 8)              // base offset (highest stack offset in the span)
@@ -608,7 +622,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			bytesOffset := int(stack[stackPtr-int(bytesStackIndex)])
 			wordOffset := bytesOffset / 8
 			oldValue := stack[stackPtr-offset+wordOffset]
-			innerOffsetBits := (bytesOffset % 8) * 8
+			innerOffsetBits := uint((bytesOffset % 8) * 8) //nolint:gosec // (bytesOffset % 8) is always 0-7, so *8 is 0-56
 			newValue := (oldValue & ^(0xff << innerOffsetBits)) | (Operation(accumulator&0xff) << innerOffsetBits)
 			stack[stackPtr-offset+wordOffset] = newValue
 			if Debug {

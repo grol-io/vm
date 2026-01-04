@@ -6,6 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -477,6 +482,22 @@ void run_program(CPU *cpu) {
                   cpu->pc, offset, current, stack[stack_ptr - offset],
                   cpu->accumulator, stack_ptr);
     } break;
+    case LoadSB: {
+      int64_t arg = operand;
+      int base_offset = (int)(arg >> 8); // highest stack offset in the span
+      uint8_t bytes_stack_index = (uint8_t)(arg & 0xFF);
+      int bytes_offset = (int)stack[stack_ptr - (int)bytes_stack_index];
+      int word_offset = bytes_offset / 8;
+      int stack_index = stack_ptr - base_offset + word_offset;
+      uint64_t value = (uint64_t)stack[stack_index];
+      unsigned int inner_offset_bits = (bytes_offset % 8) * 8;
+      cpu->accumulator = (int64_t)((value >> inner_offset_bits) & 0xFF);
+      DEBUG_PRINT("LoadSB at PC %" PRId64
+                  ", baseOffset %d, bytesStackIndex %u, bytesOffset %d, "
+                  "value %" PRIx64 " -> accumulator %" PRId64 ", SP=%d\n",
+                  cpu->pc, base_offset, bytes_stack_index, bytes_offset,
+                  value, cpu->accumulator, stack_ptr);
+    } break;
     case StoreSB: {
       int64_t arg = operand;
       int base_offset = (int)(arg >> 8); // highest stack offset in the span
@@ -514,6 +535,11 @@ void run_program(CPU *cpu) {
 int main(int argc, char **argv) {
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+#endif
+#ifdef _WIN32
+  // Force binary mode on Windows to prevent \n -> \r\n conversion
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
 #endif
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <program.vm>\n", argv[0]);
