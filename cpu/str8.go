@@ -4,7 +4,7 @@ import "fmt"
 
 // Serialize serializes numbytes (<= 8) bytes of data into 1 int64.
 func Serialize(b []byte) Operation {
-	if len(b) == 0 || len(b) > 8 {
+	if len(b) > 8 {
 		panic("unsupported number of bytes")
 	}
 	var result uint64
@@ -20,8 +20,8 @@ func Serialize(b []byte) Operation {
 // (like the cvm does).
 func SerializeStr8(b []byte) []Operation {
 	l := len(b)
-	if l == 0 || l > 255 {
-		panic(fmt.Sprintf("str8 can only handle strings 1-255 bytes, got %d", l))
+	if l > 255 {
+		panic(fmt.Sprintf("str8 can only handle strings 0-255 bytes, got %d", l))
 	}
 	var result []Operation
 	// First word: up to 7 bytes of data + length byte

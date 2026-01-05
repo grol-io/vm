@@ -227,7 +227,6 @@ func TestSerializeStr8Panics(t *testing.T) {
 		name  string
 		input []byte
 	}{
-		{"empty string", []byte{}},
 		{"256 bytes", make([]byte, 256)},
 		{"1000 bytes", make([]byte, 1000)},
 	}
@@ -241,5 +240,15 @@ func TestSerializeStr8Panics(t *testing.T) {
 			}()
 			serializeStr8(tt.input)
 		})
+	}
+}
+
+func TestSerializeStr8EmptyString(t *testing.T) {
+	result := serializeStr8([]byte{})
+	if len(result) != 1 {
+		t.Errorf("Empty string should serialize to 1 operation, got %d", len(result))
+	}
+	if result[0].Op != 0 {
+		t.Errorf("Empty string should be 0x0 (length byte 0), got 0x%x", result[0].Op)
 	}
 }

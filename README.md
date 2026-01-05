@@ -9,6 +9,8 @@ Virtual Machine experiment
 
 This is an experiment and comparison and optimization of a miniature assembler and VM with the following (sort of but less and less minimalistic) instructions:
 
+## Instructions
+
 Immediate operand instructions:
 - `LoadI`, `AddI`, `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI` (though they can also load the relative address of a label as value)
 
@@ -22,22 +24,27 @@ Stack-oriented instructions let the VM manage simple call frames:
 - `IdivS` divides the stack location by the accumulator and keeps the remainder in A.
 - `StoreSB` stores a single byte from the accumulator into a stack-resident buffer: the first operand specifies the base stack offset of the target word span, while 2nd operand indicates a stack slot containing the byte offset (which can be more than 8). The handler computes the word/bit position and patches the selected byte in place. It is handy for building packed `str8` buffers on the stack (see [programs/itoa.asm](programs/itoa.asm)).
 
-Short Data/string format:
+
+## Short Data/string format
+
 - String quoting use the go rules (ie in "double-quotes" with \ sequences or single 'x' for 1 character or backtick for verbatim)
 - str8: 1 byte size, remaining data (so string 7 bytes or less are 1 word, longer is chunked into 8 bytes words)
-- str16: 2 byte size (upcoming)
+- Data can also be just bytes packed by 64 bit words (see ReadN/WriteN below for instance)
 
-Syscall:
+
+## Syscall
+
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
   - `Exit` (1) with value from arg
   - `Read8` (2) reads from stdin up to A bytes into param address/stack buffer str8 format (so max 255 bytes).
-  - `Write8` (3) writes a str8 to stdout - in the SysS variant the accumulator is a byte offset from the passed stack offset.
+  - `Write8` (3) writes a str8 to stdout. In the `SysS` variant the accumulator is a byte offset from the passed stack offset. In the `Sys` one A is ignored unless the parameter is 0 in which case A is the address to use for the location of the str8 (see an example in [echo.asm](programs/echo.asm)).
   - `ReadN` (4) reads from stdin up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
   and memory as this returns the length and does not write str8 len byte first).
   - `WriteN` (5) writes A bytes to stdout from memory pointed to by the operand.
   - `Sleep` (6) argument in milliseconds
 
-Assembler only:
+## Assembler virtual instructions
+
 - `data` for a 64 bit word
 - `str8` for string (with the double or backtick quotes)
 - on a line preceding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
@@ -45,6 +52,23 @@ Assembler only:
 - `Var v1 v2 ...` virtual instruction that generates a `Push` instruction with the number of identifiers provided and defines labels for said variables starting at 0 (which will start with the value of the accumulator while the rest will start 0 initialized).
 - `Param p1 p2 ...` virtual instruction that generates stack labels for p1, p2 as offset from before the return PC (ie parameters pushed (via `Var` or `Push`) by the caller before calling `Call`)
 - `Return` virtual instruction that generates a `Ret n` where _n_ is such as a Var push is undone.
+
+## Program Initialization
+
+When a VM program starts, the host initializes the stack with command-line arguments:
+
+1. Argument addresses are pushed onto the stack in reverse order (so `argv[0]` is deepest, `argv[N-1]` is highest)
+2. The argument count (`argc`) is pushed on top
+3. The stack pointer points at `argc`
+
+To access arguments, a program typically:
+```asm
+POP 0       ; Pop argc into accumulator
+StoreR argc ; Store it for later use
+; Now pop each argument address and process it
+```
+
+See [echo.asm](programs/echo.asm) for a complete example that iterates through all arguments and prints them one per line (and `make echo-test` as an example to run).
 
 ## Benchmarks
 Compares go, tinygo, C based VMs (and plain C loop for reference).

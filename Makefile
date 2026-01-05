@@ -24,7 +24,7 @@ cat-test: vm grol_cvm
 	cmp $(SAMPLE_CAT) /tmp/cat_output
 	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
-	echo -n "A" > /tmp/cat_input
+	/bin/echo -n "A" > /tmp/cat_input
 	./vm run -quiet programs/cat.vm < /tmp/cat_input > /tmp/cat_single
 	cmp /tmp/cat_input /tmp/cat_single
 	./grol_cvm programs/cat.vm < /tmp/cat_input > /tmp/cat_single
@@ -39,6 +39,11 @@ wc-test: vm grol_cvm
 	od -c /tmp/wc_expected
 	od -c /tmp/wc_output
 	diff /tmp/wc_expected /tmp/wc_output
+
+echo-test: vm grol_cvm
+	./vm compile programs/echo.asm
+	./vm run -quiet programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
+	./grol_cvm programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
@@ -111,7 +116,7 @@ install:
 	vm version
 
 
-test: vm unit-tests itoa-test fact cat-test wc-test
+test: vm unit-tests itoa-test fact cat-test wc-test echo-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -131,7 +136,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test echo-test
 
 show_cpu_profile:
 	-pkill pprof
