@@ -11,7 +11,6 @@
 #include <io.h>
 #endif
 
-
 #ifndef DEBUG
 #define DEBUG 0
 #endif
@@ -40,6 +39,8 @@
 
 typedef int64_t Operation;
 
+enum { StackSize = 600 };
+
 uint8_t get_opcode(Operation op) { return (uint8_t)(op & 0xFF); }
 
 int64_t get_operand(Operation op) { return (int64_t)(op >> 8); }
@@ -49,9 +50,9 @@ typedef struct CPU {
   int64_t pc;
   Operation *program;
   size_t program_size;
+  Operation stack[StackSize];
+  int stack_ptr;
 } CPU;
-
-enum { StackSize = 512 };
 
 // sys_write writes bytes from memory starting at addr to stdout
 // Returns the number of bytes written or -1 on error
@@ -128,10 +129,59 @@ int64_t sys_read(Operation *memory, int addr, int n) {
   return r;
 }
 
+static void serialize_str8(const uint8_t *bytes, size_t len, Operation *out) {
+  if (len > 255) {
+    fprintf(stderr, "str8 can only handle strings 0-255 bytes, got %zu\n", len);
+    exit(1);
+  }
+  // Layout: [len][bytes...] packed into contiguous 64-bit words (possible
+  // garbage at the end).
+  uint8_t *dst = (uint8_t *)out;
+  dst[0] = (uint8_t)len;
+  memcpy(dst + 1, bytes, len);
+}
+
+static void set_args(CPU *cpu, int argc, char **argv) {
+  cpu->stack_ptr = 0; // stack_ptr points to the next free slot (matches Go VM)
+
+  // Check upfront if we have space for all arguments + argc
+  if (cpu->stack_ptr + argc + 1 > StackSize) {
+    fprintf(stderr, "Stack overflow while setting arguments\n");
+    exit(1);
+  }
+
+  for (int i = 0; i < argc; i++) {
+    const char *arg = argv[argc - 1 - i];
+    size_t len = strlen(arg);
+
+    // Calculate exact space needed for this str8 argument
+    size_t total_bytes = len + 1; // length byte + data
+    size_t op_count = (total_bytes + sizeof(Operation) - 1) / sizeof(Operation);
+
+    size_t addr = cpu->program_size;
+    size_t new_size = cpu->program_size + op_count;
+    Operation *new_program =
+        realloc(cpu->program, new_size * sizeof(Operation));
+    if (!new_program) {
+      perror("Failed to grow program for arguments");
+      exit(1);
+    }
+    cpu->program = new_program;
+    serialize_str8((const uint8_t *)arg, len, cpu->program + addr);
+    cpu->program_size = new_size;
+
+    cpu->stack[cpu->stack_ptr] = (Operation)addr;
+    cpu->stack_ptr++;
+  }
+  cpu->stack[cpu->stack_ptr] = (Operation)argc;
+  cpu->stack_ptr++;
+  // Leave stack_ptr at the first free slot, mirroring the Go VM layout.
+}
+
 void run_program(CPU *cpu) {
   int64_t end = (int64_t)(cpu->program_size);
-  Operation stack[StackSize];
-  int stack_ptr = -1;
+  Operation *stack = cpu->stack;
+  int stack_ptr = cpu->stack_ptr;
   while (cpu->pc < end) {
     Operation op = cpu->program[cpu->pc];
     uint8_t opcode = get_opcode(op);
@@ -350,6 +400,9 @@ void run_program(CPU *cpu) {
       case Write8: {
         int64_t addr =
             is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
+        if (!is_stack && syscallarg == 0) {
+          addr = cpu->accumulator;
+        }
         DEBUG_PRINT("Write8 syscall at PC %" PRId64 ", addr: %" PRId64
                     ", from %s\n",
                     cpu->pc, addr, is_stack ? "stack" : "program");
@@ -495,8 +548,8 @@ void run_program(CPU *cpu) {
       DEBUG_PRINT("LoadSB at PC %" PRId64
                   ", baseOffset %d, bytesStackIndex %u, bytesOffset %d, "
                   "value %" PRIx64 " -> accumulator %" PRId64 ", SP=%d\n",
-                  cpu->pc, base_offset, bytes_stack_index, bytes_offset,
-                  value, cpu->accumulator, stack_ptr);
+                  cpu->pc, base_offset, bytes_stack_index, bytes_offset, value,
+                  cpu->accumulator, stack_ptr);
     } break;
     case StoreSB: {
       int64_t arg = operand;
@@ -542,7 +595,7 @@ int main(int argc, char **argv) {
   _setmode(_fileno(stdout), _O_BINARY);
 #endif
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <program.vm>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <program.vm> [args ...]\n", argv[0]);
     return 1;
   }
   const char *filename = argv[1];
@@ -555,7 +608,8 @@ int main(int argc, char **argv) {
   fseek(f, 0, SEEK_END);
   cpu.program_size = (ftell(f) - (sizeof(HEADER) - 1)) /
                      INSTR_SIZE; // packed size of Operation in file - header.
-  cpu.program = malloc(cpu.program_size * INSTR_SIZE);
+  cpu.program =
+      malloc(cpu.program_size * INSTR_SIZE); // will realloc if there are args
   if (!cpu.program) {
     perror("Failed to allocate memory for program");
     fclose(f);
@@ -584,6 +638,7 @@ int main(int argc, char **argv) {
   }
   fclose(f);
   DEBUG_PRINT("Loaded program with %zu operations\n", cpu.program_size);
+  set_args(&cpu, argc - 2, argv + 2);
   run_program(&cpu);
   free(cpu.program);
   return 0;

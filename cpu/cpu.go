@@ -50,11 +50,14 @@ func (op Operation) Set48BitsOperand(operand ImmediateData) Operation {
 	return (op & 0xFFFF) | (Operation(operand) << 16)
 }
 
+const StackSize = 600 // for 4k available after argc and pc we need >= 514
+
 type CPU struct {
 	Accumulator int64
 	PC          ImmediateData
-	// SP          uint64
-	Program []Operation
+	Program     []Operation
+	StackPtr    int
+	Stack       [StackSize]Operation // we use Operation while it's really plain int64 to be compatible when using stack with sysPrint
 }
 
 const (
@@ -70,7 +73,7 @@ func signalSetup() {
 	signal.Ignore(syscall.SIGPIPE)
 }
 
-func Run(files ...string) int {
+func Run(args ...string) int {
 	signalSetup()
 	cpu := &CPU{}
 	rtSize := binary.Size(Operation(0))
@@ -78,30 +81,34 @@ func Run(files ...string) int {
 	if rtSize != OperationSize {
 		return log.FErrf("Unexpected operation size: got %d, want %d", rtSize, OperationSize)
 	}
-	for _, file := range files {
-		log.Infof("Running file: %s", file)
-		f, err := os.Open(file)
-		if err != nil {
-			return log.FErrf("Failed to read file %s: %v", file, err)
-		}
-		defer f.Close()
-		header := make([]byte, len(HEADER))
-		_, err = f.Read(header)
-		if err != nil {
-			return log.FErrf("Failed to read header from file %s: %v", file, err)
-		}
-		if string(header) != HEADER {
-			return log.FErrf("Invalid header in file %s: %q", file, string(header))
-		}
-		err = cpu.LoadProgram(f)
-		if err != nil {
-			return log.FErrf("Failed to load program %s: %v", file, err)
-		}
-		execResult := cpu.Execute()
-		if execResult != 0 {
-			log.Warnf("Non 0 exit of program %s: %v", file, execResult)
-			return execResult
-		}
+	if len(args) == 0 {
+		return log.FErrf("No file provided to run")
+	}
+	file := args[0]
+	args = args[1:]
+	log.Infof("Running file: %s with args: %v", file, args)
+	f, err := os.Open(file)
+	if err != nil {
+		return log.FErrf("Failed to read file %s: %v", file, err)
+	}
+	defer f.Close()
+	header := make([]byte, len(HEADER))
+	_, err = f.Read(header)
+	if err != nil {
+		return log.FErrf("Failed to read header from file %s: %v", file, err)
+	}
+	if string(header) != HEADER {
+		return log.FErrf("Invalid header in file %s: %q", file, string(header))
+	}
+	err = cpu.LoadProgram(f)
+	if err != nil {
+		return log.FErrf("Failed to load program %s: %v", file, err)
+	}
+	cpu.SetArgs(args)
+	execResult := cpu.Execute()
+	if execResult != 0 {
+		log.Warnf("Non 0 exit of program %s: %v", file, execResult)
+		return execResult
 	}
 	return 0
 }
@@ -119,6 +126,25 @@ func (c *CPU) LoadProgram(f *os.File) error {
 		c.Program = append(c.Program, op)
 	}
 	return nil
+}
+
+func (c *CPU) SetArgs(args []string) {
+	c.StackPtr = 0
+	// Each args at the end of program space and address on stack
+	argc := len(args)
+	for i := range argc {
+		arg := args[argc-1-i]
+		addr := len(c.Program)
+		ops := SerializeStr8([]byte(arg))
+		c.Program = append(c.Program, ops...)
+		c.Stack[c.StackPtr] = Operation(addr)
+		log.LogVf("Set arg %q on stack at %d: %d (length %d)", arg, c.StackPtr, addr, len(ops))
+		c.StackPtr++
+	}
+	// argc last on stack:
+	c.Stack[c.StackPtr] = Operation(len(args))
+	log.LogVf("Set argc on stack at %d: %d", c.StackPtr, len(args))
+	c.StackPtr++
 }
 
 const unknownSyscallAbortCode = 99
@@ -266,6 +292,9 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 			return sysWrite8(os.Stdout, stack, addr, int(accumulator%8)), false
 		}
 		addr := int64(pc) + operand
+		if operand == 0 { // 0 means use accumulator as address
+			addr = accumulator
+		}
 		return sysWrite8(os.Stdout, memory, int(addr), 0), false
 	case ReadN:
 		if isStack {
@@ -287,12 +316,8 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
-const StackSize = 512
-
 //nolint:gocognit,gocyclo,funlen,maintidx // yeah well...
-func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, int64) {
-	var stack [StackSize]Operation // we use Operation while it's really plain int64 to be compatible when using stack with sysPrint
-	stackPtr := -1
+func execute(pc ImmediateData, program []Operation, accumulator int64, stack []Operation, stackPtr int) (int64, int64) {
 	end := ImmediateData(len(program))
 	for pc < end {
 		op := program[pc]
@@ -302,7 +327,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
 			v := arg >> 8
 			log.Infof("Syscall %v at PC: %d, accumulator: %d - operand: %d (%x)", callID, pc, accumulator, v, v)
-			code, abort := executeSyscall(callID, v, accumulator, program, pc, code == SysS, stack[:], stackPtr)
+			code, abort := executeSyscall(callID, v, accumulator, program, pc, code == SysS, stack, stackPtr)
 			if abort {
 				return accumulator, code
 			}
@@ -524,10 +549,10 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 		case Push:
 			for range op.Operand() {
 				stackPtr++
-				stack[stackPtr] = 0 //nolint:gosec // gosec smoking crack again?
+				stack[stackPtr] = 0
 			}
 			stackPtr++
-			stack[stackPtr] = Operation(accumulator) //nolint:gosec // gosec smoking crack again?
+			stack[stackPtr] = Operation(accumulator)
 			if Debug {
 				log.Debugf("Push    at PC: %d, value: %d - SP = %d %v", pc, accumulator, stackPtr, stack[:stackPtr+1])
 			}
@@ -641,7 +666,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64) (int64, i
 }
 
 func (c *CPU) Execute() int {
-	accumulator, exitCode := execute(c.PC, c.Program, c.Accumulator)
+	accumulator, exitCode := execute(c.PC, c.Program, c.Accumulator, c.Stack[:], c.StackPtr)
 	c.Accumulator = accumulator
 	return int(exitCode)
 }
