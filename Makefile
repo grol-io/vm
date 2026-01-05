@@ -116,7 +116,7 @@ install:
 	vm version
 
 
-test: vm unit-tests itoa-test fact cat-test wc-test
+test: vm unit-tests itoa-test fact cat-test wc-test echo-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -136,7 +136,7 @@ cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
 .PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test
+.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test echo-test
 
 show_cpu_profile:
 	-pkill pprof
