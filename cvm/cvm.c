@@ -174,8 +174,7 @@ static void set_args(CPU *cpu, int argc, char **argv) {
     cpu->stack_ptr++;
   }
   cpu->stack[cpu->stack_ptr] = (Operation)argc;
-  cpu->stack_ptr++;
-  // Leave stack_ptr at the first free slot, mirroring the Go VM layout.
+  // Leave stack_ptr pointing at argc (the top of the stack).
 }
 
 void run_program(CPU *cpu) {

@@ -50,7 +50,7 @@ func (op Operation) Set48BitsOperand(operand ImmediateData) Operation {
 	return (op & 0xFFFF) | (Operation(operand) << 16)
 }
 
-const StackSize = 600 // for 4k available after argc and pc we need >= 514
+const StackSize = 600 // for 4k available after argc we need >= 513
 
 type CPU struct {
 	Accumulator int64
@@ -144,7 +144,6 @@ func (c *CPU) SetArgs(args []string) {
 	// argc last on stack:
 	c.Stack[c.StackPtr] = Operation(len(args))
 	log.LogVf("Set argc on stack at %d: %d", c.StackPtr, len(args))
-	c.StackPtr++
 }
 
 const unknownSyscallAbortCode = 99
