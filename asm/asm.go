@@ -136,33 +136,33 @@ loop:
 	return result, err
 }
 
-type Resolve struct {
+type Resolver struct {
 	labels map[string]cpu.ImmediateData
 	vars   map[string]cpu.ImmediateData
 	consts map[string]int64
 }
 
-func NewResolver() *Resolve {
-	return &Resolve{
+func NewResolver() *Resolver {
+	return &Resolver{
 		labels: make(map[string]cpu.ImmediateData),
 		vars:   make(map[string]cpu.ImmediateData),
 		consts: make(map[string]int64),
 	}
 }
 
-func (r *Resolve) AddLabel(label string, value cpu.ImmediateData) {
+func (r *Resolver) AddLabel(label string, value cpu.ImmediateData) {
 	r.labels[label] = value
 }
 
-func (r *Resolve) ClearVars() {
+func (r *Resolver) ClearVars() {
 	clear(r.vars)
 }
 
-func (r *Resolve) AddVar(name string, value cpu.ImmediateData) {
+func (r *Resolver) AddVar(name string, value cpu.ImmediateData) {
 	r.vars[name] = value
 }
 
-func (r *Resolve) AddConst(name string, value int64) error {
+func (r *Resolver) AddConst(name string, value int64) error {
 	if oldV, ok := r.consts[name]; ok {
 		if oldV == value {
 			return nil // noop
@@ -173,22 +173,22 @@ func (r *Resolve) AddConst(name string, value int64) error {
 	return nil
 }
 
-func (r *Resolve) Labels(name string) (cpu.ImmediateData, bool) {
+func (r *Resolver) Labels(name string) (cpu.ImmediateData, bool) {
 	v, ok := r.labels[name]
 	return v, ok
 }
 
-func (r *Resolve) Var(name string) (cpu.ImmediateData, bool) {
+func (r *Resolver) Var(name string) (cpu.ImmediateData, bool) {
 	v, ok := r.vars[name]
 	return v, ok
 }
 
-func (r *Resolve) Const(name string) (int64, bool) {
+func (r *Resolver) Const(name string) (int64, bool) {
 	v, ok := r.consts[name]
 	return v, ok
 }
 
-func (r *Resolve) ResValue(strVal string) (int64, error) {
+func (r *Resolver) ResValue(strVal string) (int64, error) {
 	if v, ok := r.Const(strVal); ok {
 		return v, nil
 	}
@@ -497,7 +497,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 	return emitCode(writer, result, resolver)
 }
 
-func emitCode(writer io.Writer, result []Line, resolver *Resolve) int {
+func emitCode(writer io.Writer, result []Line, resolver *Resolver) int {
 	for pc, line := range result {
 		op := line.Op
 		if !line.Data && line.Label != "" {
