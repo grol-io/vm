@@ -1,8 +1,11 @@
-    LoadI '\n'
+.const newline '\n'
+.const ascii_r 'R'
+
+    LoadI newline
     ShiftI 8
-    AddI 'R'
+    AddI ascii_r
     ShiftI 8
-    AddI 4 # len
+    AddI 2 # len
     StoreR buf
     Sys Write8 buf
     Sys exit 0
