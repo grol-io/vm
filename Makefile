@@ -78,6 +78,7 @@ cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 	./vm genh > cvm/cvm.h
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
+	$(CC) --version
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
 
 cvm-loop: grol_cvm
