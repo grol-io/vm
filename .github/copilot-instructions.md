@@ -36,7 +36,7 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 
 ## Assembler Conventions
 - Labels: `label:`; operands for `*R` and control-flow can be label-relative.
-- Virtual directives: `data <int64>`, `str8 "..."` (length-prefixed, chunked into 64-bit words), `.space N`.
+- Virtual directives: `data <int64>`, `str8 "..."` (length-prefixed, chunked into 64-bit words), `.space N`, `.const NAME VALUE` (define a named constant; can reference earlier constants; redefinition with a different value errors). Constants can be used anywhere a numeric value is accepted (immediates, `.space`, stack indices for `*S`, jump compare values, etc.).
 - Stack declarations: `Var v1 v2 ...` (emits `Push` and defines stack labels), `Param p1 p2 ...` (caller-pushed parameter labels), `Return` (emits `Ret` to unwind `Var`).
 - argv initialization: host pushes argument addresses in reverse order, then `argc`; `SP` points at `argc`. See [programs/echo.asm](../programs/echo.asm).
 
