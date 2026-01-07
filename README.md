@@ -45,6 +45,8 @@ Stack-oriented instructions let the VM manage simple call frames:
 
 ## Assembler virtual instructions
 
+- `:` (eg `foo:` on its own line) defines a label for relative addressing instructions.
+- `.const` defines a constant that can be used in instructions later (must be defined before use unlike labels)
 - `data` for a 64 bit word
 - `str8` for string (with the double or backtick quotes)
 - on a line preceding an instruction: _label_ + `:` label for the *R instruction (relative address calculation). _label_ starts with a letter.
