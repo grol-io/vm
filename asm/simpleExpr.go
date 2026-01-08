@@ -24,6 +24,7 @@ var allOperators = []Operator{
 	RightShift,
 }
 
+// OperatorSplit splits between leftside and right side when finding one of our operators.
 // TODO: Not very efficient (but then it also doesn't matter too much for what we are compiling):
 // Replace by IndexAny for the 1 char first 5 operators and check the shifts after that ?
 func OperatorSplit(str string) (Operator, string, string) {
