@@ -39,3 +39,21 @@ func TestSimplePrecedence(t *testing.T) {
 		}
 	}
 }
+
+func TestSimpleError(t *testing.T) {
+	log.SetLogLevelQuiet(log.Debug)
+	tsts := []struct {
+		input string
+		error string
+	}{
+		{"2*-3", `Unsupported expression "2" * ""`},
+		{"2*3.4", `strconv.ParseInt: parsing "3.4": invalid syntax`},
+	}
+	r := NewResolver()
+	for _, tst := range tsts {
+		v, err := r.ResValue(tst.input)
+		if err == nil || err.Error() != tst.error {
+			t.Errorf("unexpected error for input %q: got %d %v, want %v", tst.input, v, err, tst.error)
+		}
+	}
+}

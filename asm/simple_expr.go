@@ -1,6 +1,7 @@
 package asm
 
 import (
+	"fmt"
 	"strings"
 
 	"fortio.org/log"
@@ -54,6 +55,9 @@ func (r *Resolver) ResOperator(op Operator, left, right string) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
+	}
+	if right == "" {
+		return 0, fmt.Errorf("Unsupported expression %q %s %q", left, op, right)
 	}
 	rightV, err := r.ResValue(right)
 	if err != nil {
