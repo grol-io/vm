@@ -23,6 +23,9 @@ func TestSimplePrecedence(t *testing.T) {
 		{"42/5", 8},
 		{"0xff&0x2345", 0x45},
 		{"0x2345>>4", 0x0234},
+		{"10-3-2", 5},
+		{"1+2|3", 4}, // treat as 1+(2|3) on purpose
+		{"2|3+1", 4},
 	}
 	r := NewResolver()
 	for _, tst := range tsts {

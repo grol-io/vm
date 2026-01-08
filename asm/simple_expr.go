@@ -9,15 +9,15 @@ import (
 type Operator string
 
 const (
-	Plus        Operator = "+"
-	Minus       Operator = "-"
-	Mult        Operator = "*"
-	Div         Operator = "/"
-	Mod         Operator = "%"
-	OperatorOr  Operator = "|"
-	OperatorAnd Operator = "&"
-	LeftShift   Operator = "<<"
-	RightShift  Operator = ">>"
+	Plus       Operator = "+"
+	Minus      Operator = "-"
+	Mult       Operator = "*"
+	Div        Operator = "/"
+	Mod        Operator = "%"
+	BitOr      Operator = "|"
+	BitAnd     Operator = "&"
+	LeftShift  Operator = "<<"
+	RightShift Operator = ">>"
 )
 
 var allOperators = []Operator{ // with precedence
@@ -26,8 +26,8 @@ var allOperators = []Operator{ // with precedence
 	Mult,
 	Div,
 	Mod,
-	OperatorOr,
-	OperatorAnd,
+	BitOr,
+	BitAnd,
 	LeftShift,
 	RightShift,
 }
@@ -37,7 +37,7 @@ var allOperators = []Operator{ // with precedence
 // Replace by IndexAny for the 1 char first 5 operators and check the shifts after that ?
 func OperatorSplit(str string) (Operator, string, string) {
 	for _, op := range allOperators {
-		if idx := strings.Index(str, string(op)); idx != -1 {
+		if idx := strings.LastIndex(str, string(op)); idx != -1 {
 			return op, str[:idx], str[idx+len(op):]
 		}
 	}
@@ -74,9 +74,9 @@ func (r *Resolver) ResOperator(op Operator, left, right string) (int64, error) {
 		res = leftV << rightV
 	case RightShift:
 		res = leftV >> rightV
-	case OperatorOr:
+	case BitOr:
 		res = leftV | rightV
-	case OperatorAnd:
+	case BitAnd:
 		res = leftV & rightV
 	default:
 		panic("unsupported operator: " + string(op))
