@@ -9,21 +9,25 @@ import (
 type Operator string
 
 const (
-	Plus       Operator = "+"
-	Minus      Operator = "-"
-	Mult       Operator = "*"
-	Div        Operator = "/"
-	Mod        Operator = "%"
-	LeftShift  Operator = "<<"
-	RightShift Operator = ">>"
+	Plus        Operator = "+"
+	Minus       Operator = "-"
+	Mult        Operator = "*"
+	Div         Operator = "/"
+	Mod         Operator = "%"
+	OperatorOr  Operator = "|"
+	OperatorAnd Operator = "&"
+	LeftShift   Operator = "<<"
+	RightShift  Operator = ">>"
 )
 
-var allOperators = []Operator{
+var allOperators = []Operator{ // with precedence
 	Plus,
 	Minus,
 	Mult,
 	Div,
 	Mod,
+	OperatorOr,
+	OperatorAnd,
 	LeftShift,
 	RightShift,
 }
@@ -70,6 +74,12 @@ func (r *Resolver) ResOperator(op Operator, left, right string) (int64, error) {
 		res = leftV << rightV
 	case RightShift:
 		res = leftV >> rightV
+	case OperatorOr:
+		res = leftV | rightV
+	case OperatorAnd:
+		res = leftV & rightV
+	default:
+		panic("unsupported operator: " + string(op))
 	}
 	log.LogVf("Evaluated expression: %s %s %s = %d", left, op, right, res)
 	return res, nil
