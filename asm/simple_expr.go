@@ -33,8 +33,9 @@ var allOperators = []Operator{ // with precedence
 }
 
 // OperatorSplit splits between leftside and right side when finding one of our operators.
-// TODO: Not very efficient (but then it also doesn't matter too much for what we are compiling):
-// Replace by IndexAny for the 1 char first 5 operators and check the shifts after that ?
+// While not very efficient (but then it also doesn't matter too much for what we are compiling)
+// it also handles precedence (unlike what would happen if we were to use IndexAny for the
+// many 1 byte operators instance).
 func OperatorSplit(str string) (Operator, string, string) {
 	for _, op := range allOperators {
 		if idx := strings.LastIndex(str, string(op)); idx != -1 {

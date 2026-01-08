@@ -26,6 +26,7 @@ func TestSimplePrecedence(t *testing.T) {
 		{"10-3-2", 5},
 		{"1+2|3", 4}, // treat as 1+(2|3) on purpose
 		{"2|3+1", 4},
+		{"-2*3", -6}, // note that 2*-3 doesn't work.
 	}
 	r := NewResolver()
 	for _, tst := range tsts {

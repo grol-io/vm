@@ -45,6 +45,8 @@ Stack-oriented instructions let the VM manage simple call frames:
 
 ## Assembler virtual instructions
 
+The assembler is using space separated arguments and allow basic expressions (eg `foo<<4+3`) (see the Operator constants for list). Note that there are limitations, for instance `-2*3` works fine but not `2*-3` eg for negative operands gather the sign at the front.
+
 - `:` (eg `foo:` on its own line) defines a label for relative addressing instructions.
 - `.const` defines a constant that can be used in instructions later (must be defined before use unlike labels)
 - `data` for a 64 bit word
