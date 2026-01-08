@@ -4,7 +4,7 @@
 ; reserve and read 256 bytes at a time
 .const maxBytes 256
 ; so for buffer; 32 words * 8 bytes = 256 bytes
-.const maxWords 32
+.const maxWords maxBytes/8
 
     Var count bytes_read buf[maxWords]
     LoadI 0
