@@ -36,7 +36,7 @@ var allOperators = []Operator{ // with precedence
 // OperatorSplit splits between leftside and right side when finding one of our operators.
 // While not very efficient (but then it also doesn't matter too much for what we are compiling)
 // it also handles precedence (unlike what would happen if we were to use IndexAny for the
-// many 1 byte operators instance).
+// many 1 byte operators instances).
 func OperatorSplit(str string) (Operator, string, string) {
 	for _, op := range allOperators {
 		if idx := strings.LastIndex(str, string(op)); idx != -1 {
@@ -57,7 +57,7 @@ func (r *Resolver) ResOperator(op Operator, left, right string) (int64, error) {
 		}
 	}
 	if right == "" {
-		return 0, fmt.Errorf("Unsupported expression %q %s %q", left, op, right)
+		return 0, fmt.Errorf("unsupported expression %q %s %q", left, op, right)
 	}
 	rightV, err := r.ResValue(right)
 	if err != nil {

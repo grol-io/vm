@@ -27,6 +27,8 @@ func TestSimplePrecedence(t *testing.T) {
 		{"1+2|3", 4}, // treat as 1+(2|3) on purpose
 		{"2|3+1", 4},
 		{"-2*3", -6}, // note that 2*-3 doesn't work.
+		{"1|2+5", 8}, // (1|2)+5 and not 1|(2+5)
+		{"5+1|2", 8}, // 5+(1|2) and not (5+1)|2
 	}
 	r := NewResolver()
 	for _, tst := range tsts {
@@ -46,7 +48,7 @@ func TestSimpleError(t *testing.T) {
 		input string
 		error string
 	}{
-		{"2*-3", `Unsupported expression "2" * ""`},
+		{"2*-3", `unsupported expression "2" * ""`},
 		{"2*3.4", `strconv.ParseInt: parsing "3.4": invalid syntax`},
 	}
 	r := NewResolver()

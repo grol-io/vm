@@ -483,7 +483,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				op = op.SetOperand(cpu.ImmediateData(v))
 				is48bit = true
 			default:
-				// allow labels as arguments even for immediate operands (eg load the address into accumulator)
+				// allow labels as arguments even for immediate operands (e.g. load the address into accumulator)
 				v, err := resolver.ResValue(args[0])
 				if err != nil {
 					if isAddressLabel(arg) {
