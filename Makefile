@@ -63,6 +63,8 @@ run: vm
 	./vm compile -loglevel debug programs/loop.asm
 	./vm compile -loglevel debug programs/pow.asm
 	./vm run -loglevel debug programs/pow.vm
+	./vm compile programs/compare_neg.asm programs/itoa.asm
+	./vm run -quiet programs/compare_neg.vm
 	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
 
 GEN:=cpu/instruction_string.go cpu/syscall_string.go
