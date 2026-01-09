@@ -315,6 +315,14 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 	return unknownSyscallAbortCode, true // unknown syscall abort code.
 }
 
+func splitSigned8bits(v int64) (int64, int64) {
+	return v >> 8, int64(int8(v & 0xFF)) //nolint:gosec // 0xFF implies can't overflow and we want the sign bit
+}
+
+func splitUnsigned8bits(v int64) (int64, int64) {
+	return v >> 8, int64(uint8(v & 0xFF)) //nolint:gosec // 0xFF implies can't overflow
+}
+
 //nolint:gocognit,gocyclo,funlen,maintidx // yeah well...
 func execute(pc ImmediateData, program []Operation, accumulator int64, stack []Operation, stackPtr int) (int64, int64) {
 	end := ImmediateData(len(program))
@@ -322,9 +330,8 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 		op := program[pc]
 		switch code := op.Opcode(); code {
 		case Sys, SysS:
-			arg := op.OperandInt64()
-			callID := Syscall(arg & 0xFF) //nolint:gosec // duh... 0xFF means it can't overflow
-			v := arg >> 8
+			v, cid := splitUnsigned8bits(op.OperandInt64())
+			callID := Syscall(cid) //nolint:gosec // 0xFF in splitUnsigned8bits means it can't overflow
 			log.Infof("Syscall %v at PC: %d, accumulator: %d - operand: %d (%x)", callID, pc, accumulator, v, v)
 			code, abort := executeSyscall(callID, v, accumulator, program, pc, code == SysS, stack, stackPtr)
 			if abort {
@@ -378,8 +385,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JNE:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator != value {
 				if Debug {
 					log.Debugf("JNE     at PC: %d, jumping to PC: +%d", pc, addr)
@@ -392,8 +398,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JEQ:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator == value {
 				if Debug {
 					log.Debugf("JEQ     at PC: %d, jumping to PC: +%d", pc, addr)
@@ -406,8 +411,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JLT:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator < value {
 				if Debug {
 					log.Debugf("JLT     at PC: %d, jumping to PC: +%d", pc, addr)
@@ -420,8 +424,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JGT:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator > value {
 				if Debug {
 					log.Debugf("JGT     at PC: %d, jumping to PC: +%d", pc, addr)
@@ -434,8 +437,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JGTE:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator >= value {
 				if Debug {
 					log.Debugf("JGTE    at PC: %d, jumping to PC: +%d", pc, addr)
@@ -448,8 +450,7 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			}
 		case JLTE:
 			param := op.OperandInt64()
-			addr := param >> 8
-			value := param & 0xFF
+			addr, value := splitSigned8bits(param)
 			if accumulator <= value {
 				if Debug {
 					log.Debugf("JLTE    at PC: %d, jumping to PC: +%d", pc, addr)
@@ -514,13 +515,12 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 			// ok to panic if offset is out of bounds
 			program[pc+offset] = Operation(accumulator)
 		case IncrR:
-			arg := op.Operand()
-			offset := arg >> 8
-			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			offset, value := splitSigned8bits(op.OperandInt64())
+			addr := pc + ImmediateData(offset)
 			// ok to panic if offset is out of bounds
-			oldValue := int64(program[pc+offset])
-			accumulator = oldValue + int64(value)
-			program[pc+offset] = Operation(accumulator)
+			oldValue := int64(program[addr])
+			accumulator = oldValue + value
+			program[addr] = Operation(accumulator)
 			if Debug {
 				log.Debugf("IncrR   at PC: %d, offset: %d, value: %d -> %d", pc, offset, value, accumulator)
 			}
@@ -606,12 +606,11 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 					pc, offset, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case IncrS:
-			arg := op.Operand()
-			offset := int(arg >> 8)
-			value := int8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
-			oldValue := stack[stackPtr-offset]
-			accumulator = int64(oldValue) + int64(value)
-			stack[stackPtr-offset] = Operation(accumulator)
+			offset, value := splitSigned8bits(op.OperandInt64())
+			addr := stackPtr - int(offset)
+			oldValue := stack[addr]
+			accumulator = int64(oldValue) + value
+			stack[addr] = Operation(accumulator)
 			if Debug {
 				log.Debugf("IncrS   at PC: %d, offset: %d, value: %d -> %d - SP = %d %v",
 					pc, offset, value, accumulator, stackPtr, stack[:stackPtr+1])
@@ -626,12 +625,10 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 					pc, offset, current, stack[stackPtr-offset], accumulator, stackPtr, stack[:stackPtr+1])
 			}
 		case LoadSB:
-			arg := op.Operand()
-			offset := int(arg >> 8)              // base offset (highest stack offset in the span)
-			bytesStackIndex := uint8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			offset, bytesStackIndex := splitUnsigned8bits(op.OperandInt64())
 			bytesOffset := int(stack[stackPtr-int(bytesStackIndex)])
 			wordOffset := bytesOffset / 8
-			value := stack[stackPtr-offset+wordOffset]
+			value := stack[stackPtr-int(offset)+wordOffset]
 			innerOffsetBits := uint((bytesOffset % 8) * 8)                 //nolint:gosec // (bytesOffset % 8) is always 0-7, so *8 is 0-56
 			accumulator = int64((uint64(value) >> innerOffsetBits) & 0xff) //nolint:gosec // shift amount is always 0-56
 			if Debug {
@@ -640,15 +637,13 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 					pc, offset, bytesStackIndex, bytesOffset, value, accumulator, stackPtr)
 			}
 		case StoreSB:
-			arg := op.Operand()
-			offset := int(arg >> 8)              // base offset (highest stack offset in the span)
-			bytesStackIndex := uint8(arg & 0xff) //nolint:gosec // 0xff implies can't overflow (and we want the sign bit too)
+			offset, bytesStackIndex := splitUnsigned8bits(op.OperandInt64())
 			bytesOffset := int(stack[stackPtr-int(bytesStackIndex)])
 			wordOffset := bytesOffset / 8
-			oldValue := stack[stackPtr-offset+wordOffset]
+			oldValue := stack[stackPtr-int(offset)+wordOffset]
 			innerOffsetBits := uint((bytesOffset % 8) * 8) //nolint:gosec // (bytesOffset % 8) is always 0-7, so *8 is 0-56
 			newValue := (oldValue & ^(0xff << innerOffsetBits)) | (Operation(accumulator&0xff) << innerOffsetBits)
-			stack[stackPtr-offset+wordOffset] = newValue
+			stack[stackPtr-int(offset)+wordOffset] = newValue
 			if Debug {
 				log.Debugf("StoreSB at PC: %d, baseOffset: %d, bytesStackIndex: %d, bytesOffset: %d,"+
 					" oldValue: %x -> newValue: %x - SP = %d %x",
