@@ -476,8 +476,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if err != nil {
 					return log.FErrf("Failed to parse argument %q: %v", args[0], err)
 				}
-				if v < 0 || v > 255 {
-					return log.FErrf("Jump comparison value out of range (0 to 255): %d", v)
+				if v < -128 || v > 127 {
+					return log.FErrf("Jump comparison value out of range (-128 to 127): %d", v)
 				}
 				// Encode as: lower 8 bits = value, upper bits = destination (to be filled in by emitCode)
 				op = op.SetOperand(cpu.ImmediateData(v))

@@ -45,6 +45,11 @@ uint8_t get_opcode(Operation op) { return (uint8_t)(op & 0xFF); }
 
 int64_t get_operand(Operation op) { return (int64_t)(op >> 8); }
 
+int64_t get_signed8(int64_t v) {
+  int8_t b = (int8_t)(v & 0xFF);
+  return (int64_t)b;
+}
+
 typedef struct CPU {
   int64_t accumulator;
   int64_t pc;
@@ -227,7 +232,7 @@ void run_program(CPU *cpu) {
       break;
     case JNE: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JNE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
@@ -238,7 +243,7 @@ void run_program(CPU *cpu) {
     } break;
     case JEQ: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JEQ at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
@@ -249,7 +254,7 @@ void run_program(CPU *cpu) {
     } break;
     case JLT: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JLT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
@@ -260,7 +265,7 @@ void run_program(CPU *cpu) {
     } break;
     case JGT: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JGT at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
@@ -271,7 +276,7 @@ void run_program(CPU *cpu) {
     } break;
     case JGTE: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JGTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
@@ -282,7 +287,7 @@ void run_program(CPU *cpu) {
     } break;
     case JLTE: {
       int64_t addr = operand >> 8;
-      int64_t value = operand & 0xFF;
+      int64_t value = get_signed8(operand & 0xFF);
       DEBUG_PRINT("JLTE at PC %" PRId64 ", addr: %" PRId64 ", value: %" PRId64
                   "\n",
                   cpu->pc, addr, value);
