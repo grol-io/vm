@@ -16,6 +16,13 @@ const (
 	ReadN  // Read A bytes to address in param
 	WriteN // Write A bytes from address in param (so very different use of A than SysS Write8)
 	Sleep  // Sleep for A milliseconds
+	// New generic syscalls supporting packed arguments.
+	// Format: SYS ID Arg1 Arg2 Arg3...
+
+	// Read reads from FD (8 bits), Len (8 bits), Addr (Rest).
+	Read
+	Write // Write(FD, Len, Addr)
+	Open  // Open(0, 0, Addr) - Open file at Path(Addr) O_RDONLY, returns FD in A.
 
 	LastSyscall
 )

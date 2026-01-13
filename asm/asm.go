@@ -17,10 +17,11 @@ import (
 )
 
 type Line struct {
-	Op      cpu.Operation
-	Label   string
-	Data    bool
-	Is48bit bool
+	Op         cpu.Operation
+	Label      string
+	Data       bool
+	Is48bit    bool
+	LabelShift int
 }
 
 func Compile(files ...string) int {
@@ -185,6 +186,9 @@ func (r *Resolver) Var(name string) (cpu.ImmediateData, bool) {
 
 func (r *Resolver) Const(name string) (int64, bool) {
 	v, ok := r.consts[name]
+	if !ok {
+		log.Debugf("Resolver: Const %q not found in %v", name, r.consts)
+	}
 	return v, ok
 }
 
@@ -203,29 +207,80 @@ func isAddressLabel(s string) bool {
 	return unicode.IsLetter(rune(s[0]))
 }
 
-func sysCalls(op *cpu.Operation, args []string) (int, string) {
+func resolveSysCallArg(resolver *Resolver, arg string, i, numArgs int) (int64, bool, error) {
+	v, err := resolver.ResValue(arg)
+	if err == nil {
+		return v, false, nil
+	}
+	// ResValue failed, check if it's a label
+	if isAddressLabel(arg) {
+		// Only the LAST argument can be a label by name
+		if i != numArgs-1 {
+			return 0, true, fmt.Errorf("only the last argument can be a label: %s (arg %d of %d)", arg, i, numArgs)
+		}
+		return 0, true, nil
+	}
+	return 0, false, fmt.Errorf("failed to parse SYS argument %q: %w", arg, err)
+}
+
+func packSysCallArg(v int64, isLabel bool, arg string, i, numArgs int) (int64, int, error) {
+	bitShift := 8 * (i + 1)
+	isLast := (i == numArgs-1)
+
+	if !isLast {
+		if v < 0 || v > 255 {
+			return 0, 0, fmt.Errorf("intermediate SYS argument %q out of range (0-255): %d", arg, v)
+		}
+		return v << bitShift, 0, nil
+	}
+	// Last argument: consumes remaining bits
+	// 56 bits total for operand. Used: 8 (ID) + 8*i (prev args).
+	usedBits := 8 + 8*i
+	if usedBits >= 56 {
+		return 0, 0, errors.New("too many arguments for SYS, no bits left")
+	}
+
+	if isLabel {
+		return 0, bitShift, nil // Placeholder
+	}
+	return v << bitShift, 0, nil
+}
+
+func sysCalls(op *cpu.Operation, args []string, resolver *Resolver) (int, string, int) {
 	sysCallStr := args[0]
-	arg := args[1]
 	noLabel := ""
 	syscall, ok := cpu.SyscallFromString(strings.ToLower(sysCallStr))
 	if !ok {
-		return log.FErrf("Unknown syscall: %s", sysCallStr), noLabel
+		return log.FErrf("Unknown syscall: %s", sysCallStr), noLabel, 0
 	}
-	v, err := parseArg(arg)
-	if err != nil {
-		if isAddressLabel(arg) {
-			*op = op.SetOperand(cpu.ImmediateData(syscall))
-			return 0, arg
+
+	// Pack syscall ID (arg 0)
+	operand := int64(syscall)
+	labelShift := 0
+	numArgs := len(args[1:])
+
+	// Iterate over remaining args
+	for i, arg := range args[1:] {
+		v, isLabel, err := resolveSysCallArg(resolver, arg, i, numArgs)
+		if err != nil {
+			return log.FErrf("%v", err), noLabel, 0
 		}
-		return log.FErrf("Failed to parse SYS argument %q: %v", arg, err), noLabel
+
+		bits, shift, err := packSysCallArg(v, isLabel, arg, i, numArgs)
+		if err != nil {
+			return log.FErrf("%v", err), noLabel, 0
+		}
+
+		operand |= bits
+		if shift > 0 {
+			labelShift = shift
+			noLabel = arg
+		}
 	}
-	// check if the argument is within the valid range for a syscall operand - 48 bits are left
-	// so signed range is -(1<<47) to (1<<47)-1
-	if v > (1<<47)-1 || v < -(1<<47) {
-		return log.FErrf("SYS argument %q out of range: %d %x vs %d", arg, v, v, (1 << 47)), noLabel
-	}
-	*op = op.SetOperand(cpu.ImmediateData(v)<<8 | cpu.ImmediateData(syscall))
-	return 0, noLabel
+	log.Debugf("Packed SYS opcode %s -> operand %x (ID %d)", sysCallStr, operand, syscall)
+	*op = op.SetOperand(cpu.ImmediateData(operand)) // SetOperand shifts by 8 internally
+
+	return 0, noLabel, labelShift
 }
 
 func serializeStr8(b []byte) []Line {
@@ -277,9 +332,13 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			if narg == 0 {
 				return log.FErrf("Expecting at least 1 argument for %s, got none", instr)
 			}
-		case ".const", "incrr", "incrs", "sys", "syss", "loadsb", "storesb", "jne", "jeq", "jlt", "jgt", "jgte", "jlte":
+		case ".const", "incrr", "incrs", "loadsb", "storesb", "jne", "jeq", "jlt", "jgt", "jgte", "jlte":
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
+			}
+		case "sys", "syss":
+			if narg < 1 {
+				return log.FErrf("Expecting at least 1 argument for %s, got %d (%v)", instr, narg, args)
 			}
 		default:
 			if narg != 1 {
@@ -410,11 +469,24 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			switch instrEnum {
 			case cpu.Sys, cpu.SysS:
 				var failed int
-				failed, label = sysCalls(&op, args)
+				var shift int
+				failed, label, shift = sysCalls(&op, args, resolver)
 				if failed != 0 {
 					return failed
 				}
-				is48bit = true
+				if label != "" {
+					// We have a label in the packed operand.
+					// We pass the shift to emitCode via Line struct.
+					// We do NOT set is48bit because we want precise placement, not generic 48bit set.
+					is48bit = false
+				} else {
+					// No label, fully packed.
+					is48bit = true // Doesn't matter, no label to resolve.
+				}
+				// We need to pass 'shift' to the result line
+				result = append(result, Line{Op: op, Label: label, Data: data, Is48bit: is48bit, LabelShift: shift})
+				pc++
+				continue
 			case cpu.LoadSB, cpu.StoreSB:
 				// Load/Store byte at stack index (first argument) with byte offset from stack index (second argument)
 				instrName := "LoadSB"
@@ -511,9 +583,17 @@ func emitCode(writer io.Writer, result []Line, resolver *Resolver) int {
 				return log.FErrf("Unknown label: %s for %#v", line.Label, line)
 			}
 			relativePC := targetPC - cpu.ImmediateData(pc)
-			if line.Is48bit {
+			switch {
+			case line.LabelShift > 0:
+				// Generalized SYS packing: OR-in the relative address at the correct shift
+				// Op is [ArgN...][...][ID][Opcode]
+				// LabelShift relative to buffer start (Operand 0).
+				// Opcode is 8 bits.
+				// So we need to shift relativePC by (8 + LabelShift).
+				op |= cpu.Operation(relativePC) << (8 + line.LabelShift)
+			case line.Is48bit:
 				op = op.Set48BitsOperand(relativePC)
-			} else {
+			default:
 				op = op.SetOperand(relativePC)
 			}
 		}

@@ -2,6 +2,8 @@ package cpu
 
 import (
 	"bytes"
+	"io"
+	"os"
 	"testing"
 )
 
@@ -467,85 +469,94 @@ func TestSysPrint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatalf("os.Pipe() failed: %v", err)
+			}
+			fd := int(w.Fd())
+
+			// Determine if we are testing sysWrite8 or generic sysWrite
+			// The original test used sysWrite8 implicitly via sysPrint logic?
+			// Use sysWrite8 as per previous code.
+
+			// We need to ensure Write doesn't block forever if pipe fills,
+			// but for test data < 64KB it won't.
+			n := sysWrite8(fd, tt.memory, tt.addr, tt.offset)
+			w.Close()
+
 			var buf bytes.Buffer
-			n := sysWrite8(&buf, tt.memory, tt.addr, tt.offset)
+			_, err = io.Copy(&buf, r)
+			r.Close()
+			if err != nil {
+				t.Fatalf("reading from pipe failed: %v", err)
+			}
+
 			if n != tt.wantN {
-				t.Errorf("sysPrint() returned %d, want %d", n, tt.wantN)
+				t.Errorf("sysWrite8() returned %d, want %d", n, tt.wantN)
 			}
 			got := buf.String()
 			if got != tt.expected {
-				t.Errorf("sysPrint() output = %q, want %q", got, tt.expected)
+				t.Errorf("sysWrite8() output = %q, want %q", got, tt.expected)
 			}
 		})
 	}
-}
-
-// DiscardWriter implements io.Writer and discards all written data without allocating.
-type DiscardWriter struct{}
-
-func (DiscardWriter) Write(p []byte) (int, error) {
-	return len(p), nil
 }
 
 func BenchmarkSysWrite(b *testing.B) {
 	// Pre-allocate memory to avoid allocation counting noise
 	memory := make([]Operation, 4)
 	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
-	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
 	memory[0] = Operation(0x570A6F6C6C65480D)
-	// Second word: "orld!\n" (6 bytes)
-	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
 	memory[1] = Operation(0x0A21646C726F)
 
-	var buf bytes.Buffer
+	// Use /dev/null for benchmark writing to avoid pipe overhead/buffering issues in loop
+	f, err := os.OpenFile("/dev/null", os.O_WRONLY, 0o666)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+	fd := int(f.Fd())
+
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for b.Loop() {
-		buf.Reset()
-		sysWrite8(&buf, memory, 0, 0)
-	}
-	str := buf.String()
-	if str != "Hello\nWorld!\n" {
-		b.Errorf("sysWrite() output = %q, want %q", str, "Hello\nWorld!\n")
+		sysWrite8(fd, memory, 0, 0)
 	}
 }
 
 func BenchmarkSysWriteNoBuffer(b *testing.B) {
-	// Pre-allocate memory to avoid allocation counting noise
-	memory := make([]Operation, 4)
-	// Set up a 13-byte string: "Hello\nWorld!\n"
-	// First word: length=13 (0x0D), bytes 1-7 = "Hello\nW" (7 bytes of data)
-	// H(0x48), e(0x65), l(0x6C), l2(0x6C), o(0x6F), \n(0x0A), W(0x57)
-	memory[0] = Operation(0x570A6F6C6C65480D)
-	// Second word: "orld!\n" (6 bytes)
-	// o(0x6F), r(0x72), l(0x6C), d(0x64), !(0x21), \n(0x0A)
-	memory[1] = Operation(0x0A21646C726F)
-
-	var discard DiscardWriter
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for b.Loop() {
-		sysWrite8(discard, memory, 0, 0)
-	}
+	// Effectively same as above since we write to /dev/null
+	BenchmarkSysWrite(b)
 }
 
 func BenchmarkSysRead(b *testing.B) {
-	// Pre-allocate memory to avoid allocation counting noise
+	// Pre-allocate memory
 	memory := make([]Operation, 4)
-
-	// Pre-allocate a fixed byte array to avoid allocation in the benchmark loop
 	input := []byte("Hello")
-	// Pre-create the reader outside the loop (allocated once before timing)
-	reader := bytes.NewReader(input)
+
+	// Create a pipe
+	r, w, err := os.Pipe()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	fd := int(r.Fd())
+
+	// Start a goroutine to feed the pipe
+	go func() {
+		for {
+			if _, err := w.Write(input); err != nil {
+				return
+			}
+		}
+	}()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for b.Loop() {
-		reader.Reset(input)
-		sysRead8(reader, memory, 0, len(input))
+		sysRead8(fd, memory, 0, len(input))
 	}
 }

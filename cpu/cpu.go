@@ -148,7 +148,7 @@ func (c *CPU) SetArgs(args []string) {
 
 const unknownSyscallAbortCode = 99
 
-func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
+func sysRead(fd int, memory []Operation, addr, n int) int64 {
 	if n < 0 {
 		panic(fmt.Sprintf("invalid read size: %d", n))
 	}
@@ -163,16 +163,17 @@ func sysRead(in io.Reader, memory []Operation, addr, n int) int64 {
 	// Each Operation is an int64, so we need addr*OperationSize bytes offset
 	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
 	byteOffset := addr * OperationSize
-	r, err := in.Read(memAsBytes[byteOffset : byteOffset+n])
-	if err != nil && !errors.Is(err, io.EOF) {
-		log.Errf("Failed to read: %v", err)
+	// syscall.Read takes []byte
+	r, err := syscall.Read(fd, memAsBytes[byteOffset:byteOffset+n])
+	if err != nil {
+		log.Errf("Failed to read from fd %d: %v", fd, err)
 		return -1
 	}
-	log.LogVf("Read %d bytes from stdin", r)
+	log.LogVf("Read %d bytes from fd %d", r, fd)
 	return int64(r)
 }
 
-func sysRead8(in io.Reader, memory []Operation, addr, n int) int64 {
+func sysRead8(fd int, memory []Operation, addr, n int) int64 {
 	if n <= 0 || n > 255 {
 		panic(fmt.Sprintf("invalid read size for str8: %d", n))
 	}
@@ -186,12 +187,13 @@ func sysRead8(in io.Reader, memory []Operation, addr, n int) int64 {
 	// For str8, the length byte goes at byteOffset 0, data starts at byteOffset 1
 	byteOffset := addr * OperationSize
 
-	r, err := in.Read(memAsBytes[byteOffset+1 : byteOffset+1+n])
-	if err != nil && !errors.Is(err, io.EOF) {
-		log.Errf("Failed to read8: %v", err)
+	// syscall.Read takes []byte
+	r, err := syscall.Read(fd, memAsBytes[byteOffset+1:byteOffset+1+n])
+	if err != nil {
+		log.Errf("Failed to read8 from fd %d: %v", fd, err)
 		return -1
 	}
-	log.LogVf("Read8 %d bytes from stdin", r)
+	log.LogVf("Read8 %d bytes from fd %d", r, fd)
 	if r == 0 {
 		return 0
 	}
@@ -201,8 +203,8 @@ func sysRead8(in io.Reader, memory []Operation, addr, n int) int64 {
 }
 
 // sysWrite8 writes the str8 bytes and returns the number of bytes it did output.
-func sysWrite8(out io.Writer, memory []Operation, addr, offset int) int64 {
-	log.LogVf("Writing str8 from memory at addr: %d, offset: %d", addr, offset)
+func sysWrite8(fd int, memory []Operation, addr, offset int) int64 {
+	log.LogVf("Writing str8 from memory at addr: %d, offset: %d to fd %d", addr, offset, fd)
 	if len(memory) == 0 {
 		panic("memory slice is empty")
 	}
@@ -220,8 +222,8 @@ func sysWrite8(out io.Writer, memory []Operation, addr, offset int) int64 {
 		log.LogVf("Before writing bytes: %d %q", length, memAsBytes[byteOffset+1:byteOffset+1+length])
 	}
 	// Write directly from memory without copying
-	n, err := out.Write(memAsBytes[byteOffset+1 : byteOffset+1+length])
-	log.LogVf("Wrote %d bytes to stdout (err %v)", n, err)
+	n, err := syscall.Write(fd, memAsBytes[byteOffset+1:byteOffset+1+length])
+	log.LogVf("Wrote %d bytes to fd %d (err %v)", n, fd, err)
 
 	if err != nil {
 		log.Errf("Failed to output str8: %v", err)
@@ -234,9 +236,39 @@ func sysWrite8(out io.Writer, memory []Operation, addr, offset int) int64 {
 	return int64(length)
 }
 
+// sysOpen opens a file and returns the file descriptor.
+// It reads the filename (str8) from memory at the given address.
+func sysOpen(memory []Operation, addr int) int64 {
+	log.LogVf("Opening file, path at memory addr: %d", addr)
+	if len(memory) == 0 {
+		panic("memory slice is empty")
+	}
+	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
+	byteOffset := addr * OperationSize
+	// Read str8 length
+	length := int(memAsBytes[byteOffset])
+	if length == 0 {
+		log.Errf("sysOpen: empty filename")
+		return -1
+	}
+	// Extract filename
+	filename := string(memAsBytes[byteOffset+1 : byteOffset+1+length])
+	log.LogVf("Opening file: %q", filename)
+
+	// syscall.Open returns (int, error)
+	// We use O_RDONLY for now as per requirements
+	fd, err := syscall.Open(filename, syscall.O_RDONLY, 0)
+	if err != nil {
+		log.Errf("Failed to open file %q: %v", filename, err)
+		return -1
+	}
+	log.LogVf("Opened file %q, fd: %d", filename, fd)
+	return int64(fd)
+}
+
 // sysWrite writes the n bytes and returns the number of bytes it did output.
-func sysWrite(out io.Writer, memory []Operation, addr, n int) int64 {
-	log.LogVf("Writing n bytes from memory at addr: %d, n: %d", addr, n)
+func sysWrite(fd int, memory []Operation, addr, n int) int64 {
+	log.LogVf("Writing n bytes from memory at addr: %d, n: %d to fd %d", addr, n, fd)
 	if n < 0 {
 		panic(fmt.Sprintf("invalid write size: %d", n))
 	}
@@ -255,8 +287,8 @@ func sysWrite(out io.Writer, memory []Operation, addr, n int) int64 {
 		log.LogVf("Before writing bytes: %d %q", n, memAsBytes[byteOffset:byteOffset+n])
 	}
 	// Write directly from memory without copying
-	m, err := out.Write(memAsBytes[byteOffset : byteOffset+n])
-	log.LogVf("Wrote %d bytes to stdout (err %v)", m, err)
+	m, err := syscall.Write(fd, memAsBytes[byteOffset:byteOffset+n])
+	log.LogVf("Wrote %d bytes to fd %d (err %v)", m, fd, err)
 	if err != nil {
 		log.Errf("Failed to output bytes: %v", err)
 		return -1
@@ -281,34 +313,36 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 	case Read8:
 		if isStack {
 			addr := stackPtr - int(operand)
-			return sysRead8(os.Stdin, stack, addr, int(accumulator)), false
+			return sysRead8(0, stack, addr, int(accumulator)), false
 		}
 		addr := int64(pc) + operand
-		return sysRead8(os.Stdin, memory, int(addr), int(accumulator)), false
+		return sysRead8(0, memory, int(addr), int(accumulator)), false
 	case Write8:
 		if isStack {
 			addr := stackPtr - int(operand) + int(accumulator)/8
-			return sysWrite8(os.Stdout, stack, addr, int(accumulator%8)), false
+			return sysWrite8(1, stack, addr, int(accumulator%8)), false
 		}
 		addr := int64(pc) + operand
 		if operand == 0 { // 0 means use accumulator as address
 			addr = accumulator
 		}
-		return sysWrite8(os.Stdout, memory, int(addr), 0), false
+		return sysWrite8(1, memory, int(addr), 0), false
 	case ReadN:
 		if isStack {
 			addr := stackPtr - int(operand)
-			return sysRead(os.Stdin, stack, addr, int(accumulator)), false
+			return sysRead(0, stack, addr, int(accumulator)), false
 		}
 		addr := int64(pc) + operand
-		return sysRead(os.Stdin, memory, int(addr), int(accumulator)), false
+		return sysRead(0, memory, int(addr), int(accumulator)), false
 	case WriteN:
 		if isStack {
 			addr := stackPtr - int(operand)
-			return sysWrite(os.Stdout, stack, addr, int(accumulator)), false
+			return sysWrite(1, stack, addr, int(accumulator)), false
 		}
 		addr := int64(pc) + operand
-		return sysWrite(os.Stdout, memory, int(addr), int(accumulator)), false
+		return sysWrite(1, memory, int(addr), int(accumulator)), false
+	case Read, Write:
+		return executePackedSyscall(syscall, operand, accumulator, memory, pc, isStack)
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}

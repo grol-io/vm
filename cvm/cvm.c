@@ -431,6 +431,80 @@ void run_program(CPU *cpu) {
                   cpu->pc);
         }
       } break;
+      case Read: {
+        // Packed arguments: FD (8 bits), Len (8 bits), Addr (Rest)
+        int fd = syscallarg & 0xFF;
+        int length = (syscallarg >> 8) & 0xFF;
+        int64_t addr_param = syscallarg >> 16;
+        if (fd != 0) { // Only Stdin (0)
+          fprintf(stderr,
+                  "ERR: Read syscall unsupported FD %d at PC %" PRId64 "\n", fd,
+                  cpu->pc);
+          exit(1);
+        }
+        if (is_stack) {
+          fprintf(stderr,
+                  "ERR: Read syscall not supported in Stack mode at PC %" PRId64
+                  "\n",
+                  cpu->pc);
+          exit(1);
+        }
+        int64_t target_addr =
+            (addr_param == 0) ? cpu->accumulator : (cpu->pc + addr_param);
+        cpu->accumulator = sys_read(cpu->program, (int)target_addr, length);
+        if (cpu->accumulator == -1) {
+          fprintf(stderr, "ERR: Read syscall failed at PC %" PRId64 "\n",
+                  cpu->pc);
+        }
+      } break;
+      case Write: {
+        // Packed arguments: FD (8 bits), Len (8 bits), Addr (Rest)
+        int fd = syscallarg & 0xFF;
+        int length = (syscallarg >> 8) & 0xFF;
+        int64_t addr_param = syscallarg >> 16;
+        int sys_fd = STDOUT_FILENO;
+        if (fd == 2)
+          sys_fd = STDERR_FILENO;
+        else if (fd != 1) {
+          fprintf(stderr,
+                  "ERR: Write syscall unsupported FD %d at PC %" PRId64 "\n",
+                  fd, cpu->pc);
+          exit(1);
+        }
+
+        if (is_stack) {
+          fprintf(
+              stderr,
+              "ERR: Write syscall not supported in Stack mode at PC %" PRId64
+              "\n",
+              cpu->pc);
+          exit(1);
+        }
+        int64_t target_addr =
+            (addr_param == 0) ? cpu->accumulator : (cpu->pc + addr_param);
+
+        // Inline sys_write logic to support FD
+        uint8_t *data = ((uint8_t *)&cpu->program[(int)target_addr]);
+        if (length > 0) {
+          ssize_t n = write(sys_fd, data, length);
+          if (n < 0) {
+            perror("Failed to Write");
+            cpu->accumulator = -1;
+          } else {
+            if (n != length) {
+              fprintf(stderr,
+                      "Failed to write all bytes: expected %d, got %zd\n",
+                      length, n);
+              cpu->accumulator = -1;
+            } else {
+              cpu->accumulator = length;
+            }
+          }
+        } else {
+          cpu->accumulator = 0;
+        }
+      } break;
+
       default:
         fprintf(stderr, "ERR: Unknown syscall %d at PC %" PRId64 "\n",
                 syscallid, cpu->pc);
