@@ -202,8 +202,8 @@ func TestSerializeStr8(t *testing.T) {
 				if line.Label != "" {
 					t.Errorf("Line %d should have empty Label", i)
 				}
-				if line.Is48bit {
-					t.Errorf("Line %d should have Is48bit=false", i)
+				if line.remainingBits != 0 {
+					t.Errorf("Line %d should have remainingBits=0 (data lines don't use remainingBits)", i)
 				}
 			}
 			// Check first line encoding

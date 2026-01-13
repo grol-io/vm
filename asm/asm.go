@@ -17,10 +17,10 @@ import (
 )
 
 type Line struct {
-	Op      cpu.Operation
-	Label   string
-	Data    bool
-	Is48bit bool
+	Op            cpu.Operation
+	Label         string
+	Data          bool
+	remainingBits int // How many bits remain for the final operand/address (56 = full, 48 = one 8-bit packed, 40 = two 8-bit packed, etc.)
 }
 
 func Compile(files ...string) int {
@@ -289,7 +289,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		var op cpu.Operation
 		label := "" // no label except for instructions that require it
 		data := true
-		is48bit := false
+		remainingBits := 56 // default: full 56-bit operand (8-bit opcode + 56-bit operand)
 		switch instr {
 		case ".const":
 			v, err := resolver.ResValue(args[1]) // allow const to alias other consts defined before
@@ -414,7 +414,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				if failed != 0 {
 					return failed
 				}
-				is48bit = true
+				remainingBits = 48 // syscall ID takes 8 bits
 			case cpu.LoadSB, cpu.StoreSB:
 				// Load/Store byte at stack index (first argument) with byte offset from stack index (second argument)
 				instrName := "LoadSB"
@@ -436,8 +436,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					return log.FErrf("%s byte offset stack index out of range (0 to %d): %d", instrName, cpu.StackSize-1, v2)
 				}
 				op = op.SetOperand(cpu.ImmediateData(v2))
-				op = op.Set48BitsOperand(cpu.ImmediateData(v1))
-				is48bit = true
+				remainingBits = 48 // byte offset stack index takes 8 bits
+				op = op.SetOperandWithBits(cpu.ImmediateData(v1), remainingBits)
 			case cpu.IncrS:
 				// Increment by delta (first argument) at stack index (second argument)
 				v1, err := resolver.ResValue(args[0])
@@ -455,8 +455,8 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					return log.FErrf("IncrS stack index out of range (0 to %d): %d", cpu.StackSize-1, v2)
 				}
 				op = op.SetOperand(cpu.ImmediateData(v1))
-				op = op.Set48BitsOperand(cpu.ImmediateData(v2))
-				is48bit = true
+				remainingBits = 48 // increment delta takes 8 bits
+				op = op.SetOperandWithBits(cpu.ImmediateData(v2), remainingBits)
 			case cpu.IncrR:
 				// 2 arguments: value (-128 to 127) and label
 				label = args[1]
@@ -468,7 +468,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					return log.FErrf("IncrR immediate value out of range (-128 to 127): %d", v)
 				}
 				op = op.SetOperand(cpu.ImmediateData(v))
-				is48bit = true
+				remainingBits = 48 // increment value takes 8 bits
 			case cpu.JNE, cpu.JEQ, cpu.JLT, cpu.JGT, cpu.JGTE, cpu.JLTE:
 				// 2 arguments: value to compare and label for destination
 				label = args[1]
@@ -481,7 +481,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				}
 				// Encode as: lower 8 bits = value, upper bits = destination (to be filled in by emitCode)
 				op = op.SetOperand(cpu.ImmediateData(v))
-				is48bit = true
+				remainingBits = 48 // comparison value takes 8 bits
 			default:
 				// allow labels as arguments even for immediate operands (e.g. load the address into accumulator)
 				v, err := resolver.ResValue(args[0])
@@ -495,7 +495,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 				op = op.SetOperand(cpu.ImmediateData(v))
 			}
 		}
-		result = append(result, Line{Op: op, Label: label, Data: data, Is48bit: is48bit})
+		result = append(result, Line{Op: op, Label: label, Data: data, remainingBits: remainingBits})
 		pc++
 	}
 	return emitCode(writer, result, resolver)
@@ -511,11 +511,8 @@ func emitCode(writer io.Writer, result []Line, resolver *Resolver) int {
 				return log.FErrf("Unknown label: %s for %#v", line.Label, line)
 			}
 			relativePC := targetPC - cpu.ImmediateData(pc)
-			if line.Is48bit {
-				op = op.Set48BitsOperand(relativePC)
-			} else {
-				op = op.SetOperand(relativePC)
-			}
+			// Use SetOperandWithBits for all bit widths
+			op = op.SetOperandWithBits(relativePC, line.remainingBits)
 		}
 		if err := binary.Write(writer, binary.LittleEndian, op); err != nil {
 			return log.FErrf("Failed to write operation: %v", err)

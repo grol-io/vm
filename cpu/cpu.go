@@ -43,11 +43,27 @@ func (op Operation) SetOperand(operand ImmediateData) Operation {
 	return (op & 0xFF) | (Operation(operand) << 8)
 }
 
-func (op Operation) Set48BitsOperand(operand ImmediateData) Operation {
-	if operand > ((1<<47)-1) || operand < -(1<<47) {
-		panic(fmt.Sprintf("48-bit operand out of range: %d", operand))
+// SetOperandWithBits sets an operand with the specified number of remaining bits.
+// numBits specifies how many bits remain for the operand after packing other arguments.
+// Common values: 56 (no packed args), 48 (one 8-bit arg), 40 (two 8-bit args), 32 (three 8-bit args).
+func (op Operation) SetOperandWithBits(operand ImmediateData, numBits int) Operation {
+	if numBits < 0 || numBits > 56 {
+		panic(fmt.Sprintf("invalid numBits: %d (must be 0-56)", numBits))
 	}
-	return (op & 0xFFFF) | (Operation(operand) << 16)
+	if numBits == 0 {
+		return op // No space for operand
+	}
+	// Check if operand fits in the specified number of bits (signed)
+	maxVal := (int64(1) << (numBits - 1)) - 1
+	minVal := -(int64(1) << (numBits - 1))
+	if int64(operand) > maxVal || int64(operand) < minVal {
+		panic(fmt.Sprintf("%d-bit operand out of range: %d (must be %d to %d)", numBits, operand, minVal, maxVal))
+	}
+	// Calculate shift amount: total 64 bits - 8 bit opcode - remaining bits for other packed args
+	shift := 64 - numBits
+	// Calculate mask: preserve opcode and any already-packed arguments
+	mask := (Operation(1) << shift) - 1
+	return (op & mask) | (Operation(operand) << shift)
 }
 
 const StackSize = 600 // for 4k available after argc we need >= 513
