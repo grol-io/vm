@@ -340,7 +340,7 @@ func Test48BitsOperandRange(t *testing.T) {
 			t.Error("value below minimum did not panic")
 		}
 	}()
-	op.SetOperandWithBits(ImmediateData(minValue - 1), 48)
+	op.SetOperandWithBits(ImmediateData(minValue-1), 48)
 }
 
 func TestSysPrint(t *testing.T) {

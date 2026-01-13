@@ -117,7 +117,6 @@ signedArg := int64(int8(operand & 0xFF))
 
 ## Bit Width Decision Guide
 
-Choose based on address range needs:
 - **56 bits**: ±36 trillion range (standard instructions)
 - **48 bits**: ±140 trillion range (1 packed arg) - still enormous
 - **40 bits**: ±549 billion range (2 packed args) - plenty for PC offsets
@@ -125,4 +124,4 @@ Choose based on address range needs:
 - **24 bits**: ±8 million range (4 packed args) - acceptable for small programs
 - **16 bits**: ±32K range (5 packed args) - local jumps only
 
-Current VM programs are < 1000 instructions, so even 32 bits is overkill!
+Current VM programs are < 1000 instructions, so even 32 bits is plenty (even 16bits would work with our relative addressing scheme).

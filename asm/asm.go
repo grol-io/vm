@@ -17,10 +17,12 @@ import (
 )
 
 type Line struct {
-	Op            cpu.Operation
-	Label         string
-	Data          bool
-	remainingBits int // How many bits remain for the final operand/address (56 = full, 48 = one 8-bit packed, 40 = two 8-bit packed, etc.)
+	Op    cpu.Operation
+	Label string
+	Data  bool
+	// How many bits remain for the final operand/address
+	// (56 = full, 48 = one 8-bit packed, 40 = two 8-bit packed, etc.)
+	remainingBits int
 }
 
 func Compile(files ...string) int {
