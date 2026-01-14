@@ -230,20 +230,20 @@ func Test48BitsOperandBoundaries(t *testing.T) {
 			var op Operation
 			if tt.valid {
 				// Should not panic
-				op = op.Set48BitsOperand(tt.operand)
+				op = op.SetOperandWithBits(tt.operand, 48)
 				// Test roundtrip - extract 48-bit operand from bit 16 onwards
 				got := ImmediateData(int64(op) >> 16)
 				if got != tt.operand {
-					t.Errorf("roundtrip failed: Set48BitsOperand(%d) -> extracted %d, want %d", tt.operand, got, tt.operand)
+					t.Errorf("roundtrip failed: SetOperandWithBits(%d, 48) -> extracted %d, want %d", tt.operand, got, tt.operand)
 				}
 			} else {
 				// Should panic
 				defer func() {
 					if r := recover(); r == nil {
-						t.Errorf("Set48BitsOperand(%d) did not panic, but should have", tt.operand)
+						t.Errorf("SetOperandWithBits(%d, 48) did not panic, but should have", tt.operand)
 					}
 				}()
-				op.Set48BitsOperand(tt.operand)
+				op.SetOperandWithBits(tt.operand, 48)
 			}
 		})
 	}
@@ -270,7 +270,7 @@ func Test48BitsOperandRoundtrip(t *testing.T) {
 	for _, val := range testValues {
 		t.Run("", func(t *testing.T) {
 			var op Operation
-			op = op.Set48BitsOperand(val)
+			op = op.SetOperandWithBits(val, 48)
 			// Extract the 48-bit operand from bit 16 onwards
 			got := ImmediateData(int64(op) >> 16)
 			if got != val {
@@ -285,7 +285,7 @@ func Test48BitsOperandWithOpcode(t *testing.T) {
 	var op Operation
 	// Set a 2-byte opcode value in lower 16 bits
 	op = Operation(0x1234)
-	op = op.Set48BitsOperand(42)
+	op = op.SetOperandWithBits(42, 48)
 
 	// Lower 16 bits should be preserved
 	lowerBits := uint16(op & 0xFFFF)
@@ -300,7 +300,7 @@ func Test48BitsOperandWithOpcode(t *testing.T) {
 	}
 
 	// Set a different operand, lower 16 bits should remain
-	op = op.Set48BitsOperand(-100)
+	op = op.SetOperandWithBits(-100, 48)
 	lowerBits = uint16(op & 0xFFFF)
 	if lowerBits != 0x1234 {
 		t.Errorf("Lower 16 bits = 0x%x, want 0x1234", lowerBits)
@@ -321,14 +321,14 @@ func Test48BitsOperandRange(t *testing.T) {
 
 	// Min should work
 	var op Operation
-	op = op.Set48BitsOperand(ImmediateData(minValue))
+	op = op.SetOperandWithBits(ImmediateData(minValue), 48)
 	got := ImmediateData(int64(op) >> 16)
 	if got != ImmediateData(minValue) {
 		t.Errorf("minimum value roundtrip failed: got %d, want %d", got, minValue)
 	}
 
 	// Max should work
-	op = op.Set48BitsOperand(ImmediateData(maxValue))
+	op = op.SetOperandWithBits(ImmediateData(maxValue), 48)
 	got = ImmediateData(int64(op) >> 16)
 	if got != ImmediateData(maxValue) {
 		t.Errorf("maximum value roundtrip failed: got %d, want %d", got, maxValue)
@@ -340,7 +340,7 @@ func Test48BitsOperandRange(t *testing.T) {
 			t.Error("value below minimum did not panic")
 		}
 	}()
-	op.Set48BitsOperand(ImmediateData(minValue - 1))
+	op.SetOperandWithBits(ImmediateData(minValue-1), 48)
 }
 
 func TestSysPrint(t *testing.T) {

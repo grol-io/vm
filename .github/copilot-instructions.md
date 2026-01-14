@@ -24,6 +24,7 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
   - Conditional jumps (`JNE`/`JEQ`/`JLT`/`JGT`/`JGTE`/`JLTE`): opcode (8 bits) | compare value (8 bits) | jump offset (48 bits signed)
   - `IncrR`/`IncrS`: opcode (8 bits) | increment delta (8 bits signed) | address/stack index (48 bits)
   - `LoadSB`/`StoreSB`: opcode (8 bits) | byte offset stack index (8 bits) | base stack offset (48 bits)
+  - The `Line` struct in the assembler tracks `remainingBits` (56 for full operand, 48 after packing one 8-bit arg, 40 after two, etc.) to support variable numbers of packed arguments. See [PACKING.md](../PACKING.md) for details.
 - Memory model: program buffer doubles as memory; PC-relative addressing reads embedded data/strings.
 - Stack: fixed-size (see `StackSize`) with simple call frames; many ops have stack-relative variants (`*S`).
 

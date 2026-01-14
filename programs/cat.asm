@@ -12,7 +12,7 @@ read:
     ; Last case 0 read == normal EOF case, no error:
     Sys Exit 0
 write:
-    SysS WriteN -1 ; same buffer as read
+    SysS WriteN stackbuf ; same buffer as read
     JGT 0 read
     ; write error
 error:
