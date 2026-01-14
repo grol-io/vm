@@ -59,7 +59,7 @@ func (op Operation) SetOperandWithBits(operand ImmediateData, numBits int) Opera
 	if int64(operand) > maxVal || int64(operand) < minVal {
 		panic(fmt.Sprintf("%d-bit operand out of range: %d (must be %d to %d)", numBits, operand, minVal, maxVal))
 	}
-	// Calculate shift amount: total 64 bits - 8 bit opcode - remaining bits for other packed args
+	// Calculate shift amount: a numBits-wide operand is placed starting at bit position (64 - numBits)
 	shift := 64 - numBits
 	// Calculate mask: preserve opcode and any already-packed arguments
 	mask := (Operation(1) << shift) - 1
