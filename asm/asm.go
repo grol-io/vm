@@ -438,7 +438,7 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 					return log.FErrf("%s byte offset stack index out of range (0 to %d): %d", instrName, cpu.StackSize-1, v2)
 				}
 				op = op.SetOperand(cpu.ImmediateData(v2))
-				remainingBits = 48 // byte offset stack index takes 8 bits
+				remainingBits = 48 // 8 bits already used for byte offset stack index; 48 bits remain for base stack offset
 				op = op.SetOperandWithBits(cpu.ImmediateData(v1), remainingBits)
 			case cpu.IncrS:
 				// Increment by delta (first argument) at stack index (second argument)
