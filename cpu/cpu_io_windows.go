@@ -189,7 +189,7 @@ func sysWrite(out int64, memory []Operation, addr, n int) int64 {
 	}
 	// Write directly from memory without copying
 	m, err := f.Write(memAsBytes[byteOffset : byteOffset+n])
-	log.LogVf("Wrote %d bytes to stdout (err %v)", m, err)
+	log.LogVf("Wrote %d bytes to fd %d (err %v)", m, out, err)
 	if err != nil {
 		log.Errf("Failed to output bytes: %v", err)
 		return -1
