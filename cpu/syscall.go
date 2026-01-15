@@ -8,13 +8,13 @@ const (
 	InvalidSyscall Syscall = iota // skip 0 / avoid / detects accidental 0s
 
 	Exit  // Exit with A as return code
-	Read8 // Read a str8 string from stdin for up to A len bytes, result stored in param address/stack.
-	// Write8: prints (outputs) a str8 string to stdout - pointed at by param.
+	Read8 // Read a str8 string from fd for up to A len bytes, result stored in param address/stack.
+	// Write8: prints (outputs) a str8 string to fd - pointed at by param.
 	// For SysS, A is the byte offset from said stack entry.
 	// For regular Sys, if the parameter is 0, then A is used as the address, otherwise A is ignored.
 	Write8
-	ReadN  // Read A bytes to address in param
-	WriteN // Write A bytes from address in param (so very different use of A than SysS Write8)
+	ReadN  // Read A bytes to address in param from fd
+	WriteN // Write A bytes from address in param to fd (so very different use of A than SysS Write8)
 	Sleep  // Sleep for A milliseconds
 
 	LastSyscall

@@ -63,14 +63,14 @@ typedef struct CPU {
 // Returns the number of bytes written or -1 on error
 // relies on the VM layout where the str8 payload is contiguous in memory
 // following the first word that stores the length in its low byte.
-int64_t sys_write8(Operation *memory, int addr, int offset) {
+int64_t sys_write8(int64_t out, Operation *memory, int addr, int offset) {
   // All bytes are contiguous in memory (including the length byte)
   uint8_t *data = ((uint8_t *)&memory[addr]) + offset;
   int length = *data++;
   if (length == 0) {
     return 0;
   }
-  ssize_t n = write(STDOUT_FILENO, data, length);
+  ssize_t n = write((int)out, data, length);
   if (n < 0) {
     perror("Failed to write8");
     return n;
@@ -83,13 +83,13 @@ int64_t sys_write8(Operation *memory, int addr, int offset) {
   return length;
 }
 
-int64_t sys_write(Operation *memory, int addr, int length) {
+int64_t sys_write(int64_t out, Operation *memory, int addr, int length) {
   // All bytes are contiguous in memory (no length byte prefix unlike for str8)
   uint8_t *data = ((uint8_t *)&memory[addr]);
   if (length == 0) {
     return 0;
   }
-  ssize_t n = write(STDOUT_FILENO, data, length);
+  ssize_t n = write((int)out, data, length);
   if (n < 0) {
     perror("Failed to write");
     return n;
@@ -102,13 +102,13 @@ int64_t sys_write(Operation *memory, int addr, int length) {
   return length;
 }
 
-int64_t sys_read8(Operation *memory, int addr, int n) {
+int64_t sys_read8(int64_t in, Operation *memory, int addr, int n) {
   if (n <= 0 || n > 255) {
     fprintf(stderr, "Invalid read size for str8: %d\n", n);
     return -1;
   }
   uint8_t *data = ((uint8_t *)&memory[addr]);
-  ssize_t r = read(STDIN_FILENO, data + 1, n);
+  ssize_t r = read((int)in, data + 1, n);
   if (r < 0) {
     perror("Failed to read8");
     return -1;
@@ -117,7 +117,7 @@ int64_t sys_read8(Operation *memory, int addr, int n) {
   return r;
 }
 
-int64_t sys_read(Operation *memory, int addr, int n) {
+int64_t sys_read(int64_t in, Operation *memory, int addr, int n) {
   if (n < 0) {
     fprintf(stderr, "Invalid read size: %d\n", n);
     return -1;
@@ -126,7 +126,7 @@ int64_t sys_read(Operation *memory, int addr, int n) {
     return 0;
   }
   uint8_t *data = ((uint8_t *)&memory[addr]);
-  ssize_t r = read(STDIN_FILENO, data, n);
+  ssize_t r = read((int)in, data, n);
   if (r < 0) {
     perror("Failed to read");
     return -1;
@@ -384,47 +384,53 @@ void run_program(CPU *cpu) {
         usleep(syscallarg * 1000);
         break;
       case Read8: {
-        int64_t addr =
-            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
+        int64_t addr = syscallarg >> 8;
+        int64_t fd = syscallarg & 0xFF;
+        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("Read8 syscall at PC %" PRId64 ", addr: %" PRId64
-                    ", from %s\n",
-                    cpu->pc, addr, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_read8(is_stack ? stack : cpu->program, (int)addr,
+                    ", fd: %" PRId64 ", from %s\n",
+                    cpu->pc, addr, fd, is_stack ? "stack" : "program");
+        cpu->accumulator = sys_read8(fd, is_stack ? stack : cpu->program, (int)base_addr,
                                      (int)cpu->accumulator);
       } break;
       case ReadN: {
-        int64_t addr =
-            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
+        int64_t addr = syscallarg >> 8;
+        int64_t fd = syscallarg & 0xFF;
+        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("ReadN syscall at PC %" PRId64 ", addr: %" PRId64
-                    ", from %s\n",
-                    cpu->pc, addr, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_read(is_stack ? stack : cpu->program, (int)addr,
+                    ", fd: %" PRId64 ", from %s\n",
+                    cpu->pc, addr, fd, is_stack ? "stack" : "program");
+        cpu->accumulator = sys_read(fd, is_stack ? stack : cpu->program, (int)base_addr,
                                     (int)cpu->accumulator);
       } break;
       case Write8: {
-        int64_t addr =
-            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
-        if (!is_stack && syscallarg == 0) {
-          addr = cpu->accumulator;
+        int64_t addr = syscallarg >> 8;
+        int64_t fd = syscallarg & 0xFF;
+        int64_t base_addr;
+        if (!is_stack && addr == 0) {
+          base_addr = cpu->accumulator;
+        } else {
+          base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         }
         DEBUG_PRINT("Write8 syscall at PC %" PRId64 ", addr: %" PRId64
-                    ", from %s\n",
-                    cpu->pc, addr, is_stack ? "stack" : "program");
+                    ", fd: %" PRId64 ", from %s\n",
+                    cpu->pc, addr, fd, is_stack ? "stack" : "program");
         cpu->accumulator =
-            sys_write8(is_stack ? stack : cpu->program, (int)addr,
-                       is_stack ? cpu->accumulator : 0);
+            sys_write8(fd, is_stack ? stack : cpu->program, (int)base_addr,
+                       is_stack ? (int)cpu->accumulator : 0);
         if (cpu->accumulator == -1) {
           fprintf(stderr, "ERR: Write8 syscall failed at PC %" PRId64 "\n",
                   cpu->pc);
         }
       } break;
       case WriteN: {
-        int64_t addr =
-            is_stack ? (stack_ptr - (int)syscallarg) : (cpu->pc + syscallarg);
+        int64_t addr = syscallarg >> 8;
+        int64_t fd = syscallarg & 0xFF;
+        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("WriteN syscall at PC %" PRId64 ", addr: %" PRId64
-                    ", from %s\n",
-                    cpu->pc, addr, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_write(is_stack ? stack : cpu->program, (int)addr,
+                    ", fd: %" PRId64 ", from %s\n",
+                    cpu->pc, addr, fd, is_stack ? "stack" : "program");
+        cpu->accumulator = sys_write(fd, is_stack ? stack : cpu->program, (int)base_addr,
                                      cpu->accumulator);
         if (cpu->accumulator == -1) {
           fprintf(stderr, "ERR: WriteN syscall failed at PC %" PRId64 "\n",

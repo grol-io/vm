@@ -2,6 +2,8 @@
 ; Builds digits least-significant-first with ModI/DivI 10, then prefixes length byte.
 ; Handles negative numbers including min_int64 (once we increase buf to more than 1 word/7chars).
 
+.const STDOUT 1
+
 ; Simple case to debug:
 ;    LoadI -47
 ;    CALL itoa
@@ -65,5 +67,5 @@ itoa_finish_str:
     SubS idx
     StoreSB buf idx ; first byte of str8 is the length (to write)
     LoadS idx ; byte offset to find the start of the str8
-    SysS write8 buf
+    SysS Write8 STDOUT buf
     Return ; -> Ret 6 to pop the 6 (`var`s) and return address to PC

@@ -36,11 +36,11 @@ Stack-oriented instructions let the VM manage simple call frames:
 
 - `Sys` 8bit callid (lowest byte), 48 remaining bits as (first) argument to the syscall
   - `Exit` (1) with value from arg
-  - `Read8` (2) reads from stdin up to A bytes into param address/stack buffer str8 format (so max 255 bytes).
-  - `Write8` (3) writes a str8 to stdout. In the `SysS` variant the accumulator is a byte offset from the passed stack offset. In the `Sys` one A is ignored unless the parameter is 0 in which case A is the address to use for the location of the str8 (see an example in [echo.asm](programs/echo.asm)).
-  - `ReadN` (4) reads from stdin up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
+  - `Read8` (2) reads from fd (0 == stdin) up to A bytes into param address/stack buffer str8 format (so max 255 bytes).
+  - `Write8` (3) writes a str8 to fd (1 == stdout). In the `SysS` variant the accumulator is a byte offset from the passed stack offset. In the `Sys` one A is ignored unless the parameter is 0 in which case A is the address to use for the location of the str8 (see an example in [echo.asm](programs/echo.asm)).
+  - `ReadN` (4) reads from fd up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
   and memory as this returns the length and does not write str8 len byte first).
-  - `WriteN` (5) writes A bytes to stdout from memory pointed to by the operand.
+  - `WriteN` (5) writes A bytes to fd from memory pointed to by the operand.
   - `Sleep` (6) argument in milliseconds
 
 ## Assembler virtual instructions
