@@ -2,6 +2,7 @@
 
 .const STDIN 0
 .const STDOUT 1
+.const STDERR 2
 
 ; read up to 4096 bytes at a time; note this is close to the full stack size (512*8 bytes)
 .const bufsize 4096
@@ -19,4 +20,7 @@ write:
     JGT 0 read
     ; write error
 error:
+    Sys Write8 STDERR err_str
     Sys Exit 1
+err_str:
+    str8 "Error!\n"
