@@ -17,6 +17,15 @@ func signalSetup() {
 	// No-op on Windows
 }
 
+// fdMap maps numeric file descriptors to os.File objects.
+// Once we implement close() we would remove entries from this map, for
+// now we keep them indefinitely.
+var fdMap = map[int64]*os.File{
+	0: os.Stdin,
+	1: os.Stdout,
+	2: os.Stderr,
+}
+
 func sysRead(in int64, memory []Operation, addr, n int) int64 {
 	if n < 0 {
 		panic(fmt.Sprintf("invalid read size: %d", n))
@@ -32,21 +41,14 @@ func sysRead(in int64, memory []Operation, addr, n int) int64 {
 	// Each Operation is an int64, so we need addr*OperationSize bytes offset
 	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
 	byteOffset := addr * OperationSize
-	// Use standard file objects for Windows Handle compatibility
-	var f *os.File
-	switch in {
-	case 0:
-		f = os.Stdin
-	case 1:
-		f = os.Stdout
-	case 2:
-		f = os.Stderr
-	default:
+	f, ok := fdMap[in]
+	if !ok {
 		f = os.NewFile(uintptr(in), "")
 		if f == nil {
 			log.Errf("Invalid file descriptor: %d", in)
 			return -1
 		}
+		fdMap[in] = f
 	}
 	r, err := f.Read(memAsBytes[byteOffset : byteOffset+n])
 	if err != nil && !errors.Is(err, io.EOF) {
