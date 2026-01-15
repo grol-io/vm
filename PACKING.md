@@ -19,7 +19,7 @@ The `Line.remainingBits` field tracks how many bits remain available for the fin
 
 - **Two 8-bit arguments packed**: 8-bit opcode + 8-bit arg1 + 8-bit arg2 + 40-bit operand
   - `remainingBits = 40`
-  - Currently no instructions use this, but the infrastructure supports it
+  - `Sys` and `SysS` for Read* and Write*.
 
 - **Three 8-bit arguments packed**: 8-bit opcode + 8-bit arg1 + 8-bit arg2 + 8-bit arg3 + 32-bit operand
   - `remainingBits = 32`
