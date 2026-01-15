@@ -32,13 +32,22 @@ func sysRead(in int64, memory []Operation, addr, n int) int64 {
 	// Each Operation is an int64, so we need addr*OperationSize bytes offset
 	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
 	byteOffset := addr * OperationSize
-	// Use os.NewFile for Windows Handle compatibility
-	f := os.NewFile(uintptr(in), "")
-	if f == nil {
-		log.Errf("Invalid file descriptor: %d", in)
-		return -1
+	// Use standard file objects for Windows Handle compatibility
+	var f *os.File
+	switch in {
+	case 0:
+		f = os.Stdin
+	case 1:
+		f = os.Stdout
+	case 2:
+		f = os.Stderr
+	default:
+		f = os.NewFile(uintptr(in), "")
+		if f == nil {
+			log.Errf("Invalid file descriptor: %d", in)
+			return -1
+		}
 	}
-	// Note: Don't close f since we don't own the fd - it's passed in and may be reused
 	r, err := f.Read(memAsBytes[byteOffset : byteOffset+n])
 	if err != nil && !errors.Is(err, io.EOF) {
 		log.Errf("Failed to read: %v", err)
@@ -62,13 +71,22 @@ func sysRead8(in int64, memory []Operation, addr, n int) int64 {
 	// For str8, the length byte goes at byteOffset 0, data starts at byteOffset 1
 	byteOffset := addr * OperationSize
 
-	// Use os.NewFile for Windows Handle compatibility
-	f := os.NewFile(uintptr(in), "")
-	if f == nil {
-		log.Errf("Invalid file descriptor: %d", in)
-		return -1
+	// Use standard file objects for Windows Handle compatibility
+	var f *os.File
+	switch in {
+	case 0:
+		f = os.Stdin
+	case 1:
+		f = os.Stdout
+	case 2:
+		f = os.Stderr
+	default:
+		f = os.NewFile(uintptr(in), "")
+		if f == nil {
+			log.Errf("Invalid file descriptor: %d", in)
+			return -1
+		}
 	}
-	// Note: Don't close f since we don't own the fd - it's passed in and may be reused
 	r, err := f.Read(memAsBytes[byteOffset+1 : byteOffset+1+n])
 	if err != nil && !errors.Is(err, io.EOF) {
 		log.Errf("Failed to read8: %v", err)
@@ -102,13 +120,22 @@ func sysWrite8(out int64, memory []Operation, addr, offset int) int64 {
 		// this would alloc a slice so we avoid it unless verbose logging is enabled
 		log.LogVf("Before writing bytes: %d %q", length, memAsBytes[byteOffset+1:byteOffset+1+length])
 	}
-	// Use os.NewFile for Windows Handle compatibility
-	f := os.NewFile(uintptr(out), "")
-	if f == nil {
-		log.Errf("Invalid file descriptor: %d", out)
-		return -1
+	// Use standard file objects for Windows Handle compatibility
+	var f *os.File
+	switch out {
+	case 0:
+		f = os.Stdin
+	case 1:
+		f = os.Stdout
+	case 2:
+		f = os.Stderr
+	default:
+		f = os.NewFile(uintptr(out), "")
+		if f == nil {
+			log.Errf("Invalid file descriptor: %d", out)
+			return -1
+		}
 	}
-	// Note: Don't close f since we don't own the fd - it's passed in and may be reused
 	// Write directly from memory without copying
 	n, err := f.Write(memAsBytes[byteOffset+1 : byteOffset+1+length])
 	log.LogVf("Wrote %d bytes to stdout (err %v)", n, err)
@@ -144,13 +171,22 @@ func sysWrite(out int64, memory []Operation, addr, n int) int64 {
 		// this would alloc a slice so we avoid it unless verbose logging is enabled
 		log.LogVf("Before writing bytes: %d %q", n, memAsBytes[byteOffset:byteOffset+n])
 	}
-	// Use os.NewFile for Windows Handle compatibility
-	f := os.NewFile(uintptr(out), "")
-	if f == nil {
-		log.Errf("Invalid file descriptor: %d", out)
-		return -1
+	// Use standard file objects for Windows Handle compatibility
+	var f *os.File
+	switch out {
+	case 0:
+		f = os.Stdin
+	case 1:
+		f = os.Stdout
+	case 2:
+		f = os.Stderr
+	default:
+		f = os.NewFile(uintptr(out), "")
+		if f == nil {
+			log.Errf("Invalid file descriptor: %d", out)
+			return -1
+		}
 	}
-	// Note: Don't close f since we don't own the fd - it's passed in and may be reused
 	// Write directly from memory without copying
 	m, err := f.Write(memAsBytes[byteOffset : byteOffset+n])
 	log.LogVf("Wrote %d bytes to stdout (err %v)", m, err)

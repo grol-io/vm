@@ -215,7 +215,7 @@ func sysCalls(op *cpu.Operation, args []string, resolver *Resolver) (int, string
 	var operandValue int64
 	switch len(args) {
 	case 2:
-		// Sys <syscall> <operand> format
+		// Sys <syscall> <operand> format (e.g. Sys exit 0)
 		arg := args[1]
 		v, err := resolver.ResValue(arg)
 		if err != nil {
