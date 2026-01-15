@@ -91,7 +91,7 @@ func sysWrite8(out int64, memory []Operation, addr, offset int) int64 {
 	}
 	// Write directly from memory without copying
 	n, err := syscall.Write(int(out), memAsBytes[byteOffset+1:byteOffset+1+length])
-	log.LogVf("Wrote %d bytes to stdout (err %v)", n, err)
+	log.LogVf("Wrote %d bytes to fd %d (err %v)", n, out, err)
 
 	if err != nil {
 		log.Errf("Failed to output str8: %v", err)
