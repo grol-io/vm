@@ -74,20 +74,14 @@ func sysRead8(in int64, memory []Operation, addr, n int) int64 {
 	byteOffset := addr * OperationSize
 
 	// Use standard file objects for Windows Handle compatibility
-	var f *os.File
-	switch in {
-	case 0:
-		f = os.Stdin
-	case 1:
-		f = os.Stdout
-	case 2:
-		f = os.Stderr
-	default:
+	f, ok := fdMap[in]
+	if !ok {
 		f = os.NewFile(uintptr(in), "")
 		if f == nil {
 			log.Errf("Invalid file descriptor: %d", in)
 			return -1
 		}
+		fdMap[in] = f
 	}
 	r, err := f.Read(memAsBytes[byteOffset+1 : byteOffset+1+n])
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -123,20 +117,14 @@ func sysWrite8(out int64, memory []Operation, addr, offset int) int64 {
 		log.LogVf("Before writing bytes: %d %q", length, memAsBytes[byteOffset+1:byteOffset+1+length])
 	}
 	// Use standard file objects for Windows Handle compatibility
-	var f *os.File
-	switch out {
-	case 0:
-		f = os.Stdin
-	case 1:
-		f = os.Stdout
-	case 2:
-		f = os.Stderr
-	default:
+	f, ok := fdMap[out]
+	if !ok {
 		f = os.NewFile(uintptr(out), "")
 		if f == nil {
 			log.Errf("Invalid file descriptor: %d", out)
 			return -1
 		}
+		fdMap[out] = f
 	}
 	// Write directly from memory without copying
 	n, err := f.Write(memAsBytes[byteOffset+1 : byteOffset+1+length])
@@ -174,20 +162,14 @@ func sysWrite(out int64, memory []Operation, addr, n int) int64 {
 		log.LogVf("Before writing bytes: %d %q", n, memAsBytes[byteOffset:byteOffset+n])
 	}
 	// Use standard file objects for Windows Handle compatibility
-	var f *os.File
-	switch out {
-	case 0:
-		f = os.Stdin
-	case 1:
-		f = os.Stdout
-	case 2:
-		f = os.Stderr
-	default:
+	f, ok := fdMap[out]
+	if !ok {
 		f = os.NewFile(uintptr(out), "")
 		if f == nil {
 			log.Errf("Invalid file descriptor: %d", out)
 			return -1
 		}
+		fdMap[out] = f
 	}
 	// Write directly from memory without copying
 	m, err := f.Write(memAsBytes[byteOffset : byteOffset+n])
