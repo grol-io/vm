@@ -1,6 +1,8 @@
 ; wc.asm: like `wc -l`, counts newline characters in stdin and prints the count
 ; Compile with: vm compile programs/wc.asm programs/itoa.asm
 
+
+.const STDIN 0
 ; reserve and read 256 bytes at a time
 .const maxBytes 256
 ; so for buffer; 32 words * 8 bytes = 256 bytes
@@ -12,7 +14,7 @@
 
 read_loop:
     LoadI maxBytes
-    SysS ReadN buf
+    SysS ReadN STDIN buf
     JLTE 0 check_result
     ; Process bytes (accumulator has bytes_read)
     StoreS bytes_read

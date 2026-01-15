@@ -16,6 +16,8 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 - Useful debug/perf: `make vm-debug` (Go `-tags debug`), `make cvm-loop`, `make native`, `make show_cpu_profile`.
 - Default Go build tags: `no_net,no_pprof` (see Makefile `GO_BUILD_TAGS`). Use `-tags debug` for extra logging.
 - TinyGo variant: `make tiny_vm` builds a TinyGo binary and runs a loop benchmark.
+- **Cross-platform testing**: Use `GOOS=windows GOARCH=amd64 go build .` to verify Windows compatibility.
+- **Code formatting**: Always run `gofumpt -w .` before committing to ensure consistent formatting.
 
 ## Bytecode & Execution Model (project specifics)
 - File header: `"\x01GROL VM"` validated by loader (see [cpu/cpu.go](../cpu/cpu.go)).
@@ -54,6 +56,7 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 ## Go/C Execution Notes
 - Go VM: loader validates header, loads ops, then `SetArgs()` serializes argv as `str8` at end of program, pushes their addresses in reverse order, then pushes `argc`; `SP` points at `argc` (see `cpu/cpu.go`).
 - C VM: reads header and ops, appends argv as `str8` to the program buffer, pushes addresses and `argc` with the same layout; uses generated enums from [cvm/cvm.h](../cvm/cvm.h) (see `cvm/cvm.c`).
+- **Platform-specific I/O**: Go VM uses direct `syscall.Read/Write` on Unix ([cpu/cpu_io_unix.go](../cpu/cpu_io_unix.go)) for performance, and `os.NewFile` on Windows ([cpu/cpu_io_windows.go](../cpu/cpu_io_windows.go)) for Handle compatibility. File descriptors are not closed since they're passed in and may be reused.
 
 ## CLI Usage (quick examples)
 ```sh

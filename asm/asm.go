@@ -205,29 +205,65 @@ func isAddressLabel(s string) bool {
 	return unicode.IsLetter(rune(s[0]))
 }
 
-func sysCalls(op *cpu.Operation, args []string) (int, string) {
+func sysCalls(op *cpu.Operation, args []string, resolver *Resolver) (int, string, int) {
 	sysCallStr := args[0]
-	arg := args[1]
 	noLabel := ""
 	syscall, ok := cpu.SyscallFromString(strings.ToLower(sysCallStr))
 	if !ok {
-		return log.FErrf("Unknown syscall: %s", sysCallStr), noLabel
+		return log.FErrf("Unknown syscall: %s", sysCallStr), noLabel, 0
 	}
-	v, err := parseArg(arg)
-	if err != nil {
-		if isAddressLabel(arg) {
-			*op = op.SetOperand(cpu.ImmediateData(syscall))
-			return 0, arg
+	var operandValue int64
+	switch len(args) {
+	case 2:
+		// Sys <syscall> <operand> format (e.g. Sys exit 0)
+		arg := args[1]
+		v, err := resolver.ResValue(arg)
+		if err != nil {
+			if isAddressLabel(arg) {
+				*op = op.SetOperand(cpu.ImmediateData(syscall))
+				return 0, arg, 48
+			}
+			return log.FErrf("Failed to parse SYS argument %q: %v", arg, err), noLabel, 0
 		}
-		return log.FErrf("Failed to parse SYS argument %q: %v", arg, err), noLabel
+		operandValue = v
+	case 3:
+		// Sys with 2 packed args format for I/O syscalls: e.g. Sys readn <fd> <addr>
+		// Pack as: (addr << 8) | fd
+		fdArg := args[1]
+		addrArg := args[2]
+
+		fd, err := resolver.ResValue(fdArg)
+		if err != nil {
+			return log.FErrf("Failed to parse fd argument %q: %v", fdArg, err), noLabel, 0
+		}
+		if fd < 0 || fd > 255 {
+			return log.FErrf("fd out of range (0-255): %d", fd), noLabel, 0
+		}
+		addr, err := resolver.ResValue(addrArg)
+		if err != nil {
+			if isAddressLabel(addrArg) {
+				// Pack fd and syscallID, label will be resolved later for address
+				// Layout: [8-bit opcode][40-bit addr][8-bit fd][8-bit syscallID]
+				// SetOperand shifts by 8, so we pack: (fd << 8) | syscallID
+				*op = op.SetOperand((cpu.ImmediateData(fd) << 8) | cpu.ImmediateData(syscall))
+				return 0, addrArg, 40 // fd and syscallID take 16 bits, leaving 40 for address
+			}
+			return log.FErrf("Failed to parse addr argument %q: %v", addrArg, err), noLabel, 0
+		}
+		// Pack: (addr << 8) | fd
+		operandValue = (addr << 8) | fd
+	default:
+		return log.FErrf("Sys expects 2 or 3 arguments, got %d", len(args)), noLabel, 0
 	}
-	// check if the argument is within the valid range for a syscall operand - 48 bits are left
+
+	// check if the operand is within the valid range - 48 bits are left after syscall ID
 	// so signed range is -(1<<47) to (1<<47)-1
-	if v > (1<<47)-1 || v < -(1<<47) {
-		return log.FErrf("SYS argument %q out of range: %d %x vs %d", arg, v, v, (1 << 47)), noLabel
+	if operandValue > (1<<47)-1 || operandValue < -(1<<47) {
+		return log.FErrf("SYS operand out of range: %d %x vs %d", operandValue, operandValue, (1 << 47)), noLabel, 0
 	}
-	*op = op.SetOperand(cpu.ImmediateData(v)<<8 | cpu.ImmediateData(syscall))
-	return 0, noLabel
+	// Pack: (operandValue << 8) | syscallID
+	*op = op.SetOperand(cpu.ImmediateData(operandValue)<<8 | cpu.ImmediateData(syscall))
+	return 0, noLabel, 48
 }
 
 func serializeStr8(b []byte) []Line {
@@ -275,11 +311,11 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			if narg != 0 {
 				return log.FErrf("Expecting 0 arguments for return, got %d (%v)", narg, args)
 			}
-		case "var", "param":
+		case "var", "param", "sys", "syss": // one or more arguments
 			if narg == 0 {
 				return log.FErrf("Expecting at least 1 argument for %s, got none", instr)
 			}
-		case ".const", "incrr", "incrs", "sys", "syss", "loadsb", "storesb", "jne", "jeq", "jlt", "jgt", "jgte", "jlte":
+		case ".const", "incrr", "incrs", "loadsb", "storesb", "jne", "jeq", "jlt", "jgt", "jgte", "jlte":
 			if narg != 2 {
 				return log.FErrf("Expecting 2 arguments for %s, got %d (%v)", instr, narg, args)
 			}
@@ -412,11 +448,10 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			switch instrEnum {
 			case cpu.Sys, cpu.SysS:
 				var failed int
-				failed, label = sysCalls(&op, args)
+				failed, label, remainingBits = sysCalls(&op, args, resolver)
 				if failed != 0 {
 					return failed
 				}
-				remainingBits = 48 // syscall ID takes 8 bits
 			case cpu.LoadSB, cpu.StoreSB:
 				// Load/Store byte at stack index (first argument) with byte offset from stack index (second argument)
 				instrName := "LoadSB"
