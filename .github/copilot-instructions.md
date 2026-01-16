@@ -35,7 +35,11 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 - PC-relative memory/ctrl: `LoadR`, `StoreR`, `AddR`/`SubR`/`MulR`/`DivR`, `JumpR`, conditional jumps.
 - Stack ops: `Call`/`Ret`, `Push`/`Pop`, `LoadS`/`StoreS`/`AddS`/`SubS`/`MulS`/`DivS`/`IncrS`, `IdivS`.
 - Byte access for packed buffers: `LoadSB`, `StoreSB` (assemble str8 on stack; see [programs/itoa.asm](../programs/itoa.asm)).
-- Syscalls (`Sys`/`SysS`): `Exit`, `Read8`, `Write8`, `ReadN`, `WriteN`, `Sleep` (IDs in [cpu/syscall.go](../cpu/syscall.go)). `Write8` special case: in `Sys`, if operand==0, uses `A` as absolute program address; in `SysS`, `A` is byte offset from stack base operand.
+- Syscalls (`Sys`/`SysS`): `Exit`, `Read8`, `Write8`, `ReadN`, `WriteN`, `Sleep`, `Open`, `Close`, `ReadF`, `WriteF` (IDs in [cpu/syscall.go](../cpu/syscall.go)).
+  - `Write8` special case: in `Sys`, if operand==0, uses `A` as absolute program address; in `SysS`, `A` is byte offset from stack base operand.
+  - `Open` takes flags (low 8 bits) and path address (high 48 bits); if `Sys` with operand=0, uses `A` as path. Returns fd in `A`.
+  - `Close` takes fd in `A`, returns 0 on success.
+  - `ReadF`/`WriteF` pack fd (low 8 bits) and address (high 48 bits) in operand, enabling I/O with dynamically opened files.
 
 ## Assembler Conventions
 - Labels: `label:`; operands for `*R` and control-flow can be label-relative.
