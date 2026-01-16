@@ -17,6 +17,46 @@ func signalSetup() {
 	// No-op on Windows
 }
 
+func sysOpen(memory []Operation, pathAddr, flags, mode int) int64 {
+	if len(memory) == 0 {
+		panic("memory slice is empty")
+	}
+	// Extract string from memory
+	path := ""
+	byteOffset := pathAddr * OperationSize
+	memAsBytes := unsafe.Slice((*byte)(unsafe.Pointer(&memory[0])), len(memory)*OperationSize)
+
+	// Reading str8 from memory:
+	length := int(memAsBytes[byteOffset])
+	path = string(memAsBytes[byteOffset+1 : byteOffset+1+length])
+
+	f, err := os.OpenFile(path, flags, os.FileMode(mode))
+	if err != nil {
+		log.Errf("Failed to open file %q: %v", path, err)
+		return -1
+	}
+	fd := int64(f.Fd())
+	fdMap[fd] = f
+	log.LogVf("Opened file %q with flags %x mode %x -> fd %d", path, flags, mode, fd)
+	return fd
+}
+
+func sysClose(fd int64) int64 {
+	f, ok := fdMap[fd]
+	if !ok {
+		log.Errf("Invalid file descriptor: %d", fd)
+		return -1
+	}
+	err := f.Close()
+	delete(fdMap, fd)
+	if err != nil {
+		log.Errf("Failed to close fd %d: %v", fd, err)
+		return -1
+	}
+	log.LogVf("Closed fd %d", fd)
+	return 0
+}
+
 // fdMap maps numeric file descriptors to os.File objects.
 // Once we implement close() we would remove entries from this map, for
 // now we keep them indefinitely.

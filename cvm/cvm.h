@@ -49,4 +49,8 @@ enum Syscall {
   ReadN,
   WriteN,
   Sleep,
+  Open,
+  Close,
+  ReadF,
+  WriteF,
 };

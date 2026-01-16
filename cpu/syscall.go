@@ -16,6 +16,10 @@ const (
 	ReadN  // Read A bytes to address in param from fd
 	WriteN // Write A bytes from address in param to fd (so very different use of A than SysS Write8)
 	Sleep  // Sleep for A milliseconds
+	Open   // Open a file. Flags in low 8 bits of param, path address in high. Returns fd in A.
+	Close  // Close a file. Fd in A.
+	ReadF  // Read A bytes to address in memory/stack (high 48 bits of param) from fd (low 8 bits of param).
+	WriteF // Write A bytes from address in memory/stack (high 48 bits of param) to fd (low 8 bits of param).
 
 	LastSyscall
 )
