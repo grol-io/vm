@@ -38,10 +38,13 @@ Stack-oriented instructions let the VM manage simple call frames:
   - `Exit` (1) with value from arg
   - `Read8` (2) reads from fd (0 == stdin) up to A bytes into param address/stack buffer str8 format (so max 255 bytes).
   - `Write8` (3) writes a str8 to fd (1 == stdout). In the `SysS` variant the accumulator is a byte offset from the passed stack offset. In the `Sys` one A is ignored unless the parameter is 0 in which case A is the address to use for the location of the str8 (see an example in [echo.asm](programs/echo.asm)).
-  - `ReadN` (4) reads from fd up to A bytes into param address/stack buffer (no limit outside of underlying read syscall
-  and memory as this returns the length and does not write str8 len byte first).
+  - `ReadN` (4) reads from fd up to A bytes into param address/stack buffer (no limit outside of underlying read syscall and memory as this returns the length and does not write str8 len byte first).
   - `WriteN` (5) writes A bytes to fd from memory pointed to by the operand.
   - `Sleep` (6) argument in milliseconds
+  - `Open` (7) opens a file and returns fd in A. Takes flags (low 8 bits of param) and path address (high 48 bits). If `Sys` variant with param=0, uses A as path address. Flags are platform-specific (e.g., `O_RDONLY=0`).
+  - `Close` (8) closes a file descriptor. Fd in A. Returns 0 on success, -1 on error.
+  - `ReadF` (9) reads A bytes from fd (low 8 bits of param) to address (high 48 bits). Similar to ReadN but fd comes from param instead of being fixed.
+  - `WriteF` (10) writes A bytes to fd (low 8 bits of param) from address (high 48 bits). Similar to WriteN but fd comes from param instead of being fixed.
 
 ## Assembler virtual instructions
 
