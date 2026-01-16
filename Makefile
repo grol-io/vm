@@ -39,6 +39,11 @@ wc-test: vm grol_cvm
 	od -c /tmp/wc_expected
 	od -c /tmp/wc_output
 	diff /tmp/wc_expected /tmp/wc_output
+	./vm run -quiet programs/wc.vm programs/*.asm > /tmp/wc_all_output
+	wc -l programs/*.asm | awk '/total/ {print("total:", $$1)} !/total/{print($$2, $$1)}' > /tmp/wc_all_expected
+	diff /tmp/wc_all_expected /tmp/wc_all_output
+	./grol_cvm programs/wc.vm programs/*.asm > /tmp/wc_all_output
+	diff /tmp/wc_all_expected /tmp/wc_all_output
 
 echo-test: vm grol_cvm
 	./vm compile programs/echo.asm

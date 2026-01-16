@@ -1,4 +1,5 @@
 #include "cvm.h"
+#include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
 #include <stdint.h>
@@ -386,22 +387,24 @@ void run_program(CPU *cpu) {
       case Read8: {
         int64_t addr = syscallarg >> 8;
         int64_t fd = syscallarg & 0xFF;
-        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        int64_t base_addr =
+            is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("Read8 syscall at PC %" PRId64 ", addr: %" PRId64
                     ", fd: %" PRId64 ", from %s\n",
                     cpu->pc, addr, fd, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_read8(fd, is_stack ? stack : cpu->program, (int)base_addr,
-                                     (int)cpu->accumulator);
+        cpu->accumulator = sys_read8(fd, is_stack ? stack : cpu->program,
+                                     (int)base_addr, (int)cpu->accumulator);
       } break;
       case ReadN: {
         int64_t addr = syscallarg >> 8;
         int64_t fd = syscallarg & 0xFF;
-        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        int64_t base_addr =
+            is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("ReadN syscall at PC %" PRId64 ", addr: %" PRId64
                     ", fd: %" PRId64 ", from %s\n",
                     cpu->pc, addr, fd, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_read(fd, is_stack ? stack : cpu->program, (int)base_addr,
-                                    (int)cpu->accumulator);
+        cpu->accumulator = sys_read(fd, is_stack ? stack : cpu->program,
+                                    (int)base_addr, (int)cpu->accumulator);
       } break;
       case Write8: {
         int64_t addr = syscallarg >> 8;
@@ -426,16 +429,94 @@ void run_program(CPU *cpu) {
       case WriteN: {
         int64_t addr = syscallarg >> 8;
         int64_t fd = syscallarg & 0xFF;
-        int64_t base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        int64_t base_addr =
+            is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
         DEBUG_PRINT("WriteN syscall at PC %" PRId64 ", addr: %" PRId64
                     ", fd: %" PRId64 ", from %s\n",
                     cpu->pc, addr, fd, is_stack ? "stack" : "program");
-        cpu->accumulator = sys_write(fd, is_stack ? stack : cpu->program, (int)base_addr,
-                                     cpu->accumulator);
+        cpu->accumulator = sys_write(fd, is_stack ? stack : cpu->program,
+                                     (int)base_addr, cpu->accumulator);
         if (cpu->accumulator == -1) {
           fprintf(stderr, "ERR: WriteN syscall failed at PC %" PRId64 "\n",
                   cpu->pc);
         }
+      } break;
+      case Open: {
+        int64_t addr = syscallarg >> 8;
+        int64_t flags = syscallarg & 0xFF;
+        int64_t base_addr;
+        if (!is_stack && addr == 0) {
+          base_addr = cpu->accumulator;
+        } else {
+          base_addr = is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        }
+        // Read str8 path from memory
+        Operation *mem = is_stack ? stack : cpu->program;
+        uint8_t *data = ((uint8_t *)&mem[(int)base_addr]);
+        int length = *data++;
+        char path[256];
+        if (length > 255)
+          length = 255;
+        memcpy(path, data, length);
+        path[length] = '\0';
+
+        int mode = 0644;
+        int fd = open(path, (int)flags, mode);
+        DEBUG_PRINT("Open syscall at PC %" PRId64 ", path: %s, flags: %" PRId64
+                    " -> fd: %d\n",
+                    cpu->pc, path, flags, fd);
+        if (fd < 0) {
+          // perror("Failed to open"); // Optional
+          cpu->accumulator = -1;
+        } else {
+          cpu->accumulator = fd;
+        }
+      } break;
+      case Close: {
+        int fd = (int)cpu->accumulator;
+        DEBUG_PRINT("Close syscall at PC %" PRId64 ", fd: %d\n", cpu->pc, fd);
+        if (close(fd) < 0) {
+          perror("Failed to close");
+          cpu->accumulator = -1;
+        } else {
+          cpu->accumulator = 0;
+        }
+      } break;
+      case ReadF: {
+        int64_t addr = syscallarg >> 8;
+        int64_t fd_offset = syscallarg & 0xFF;
+        int64_t fd;
+        if (is_stack) {
+          fd = stack[stack_ptr - (int)fd_offset];
+        } else {
+          fd = cpu->program[cpu->pc + fd_offset];
+        }
+        int64_t base_addr =
+            is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        DEBUG_PRINT("ReadF syscall at PC %" PRId64 ", addr: %" PRId64
+                    ", fd_offset: %" PRId64 " (fd %" PRId64 "), from %s\n",
+                    cpu->pc, addr, fd_offset, fd,
+                    is_stack ? "stack" : "program");
+        cpu->accumulator = sys_read(fd, is_stack ? stack : cpu->program,
+                                    (int)base_addr, (int)cpu->accumulator);
+      } break;
+      case WriteF: {
+        int64_t addr = syscallarg >> 8;
+        int64_t fd_offset = syscallarg & 0xFF;
+        int64_t fd;
+        if (is_stack) {
+          fd = stack[stack_ptr - (int)fd_offset];
+        } else {
+          fd = cpu->program[cpu->pc + fd_offset];
+        }
+        int64_t base_addr =
+            is_stack ? (stack_ptr - (int)addr) : (cpu->pc + addr);
+        DEBUG_PRINT("WriteF syscall at PC %" PRId64 ", addr: %" PRId64
+                    ", fd_offset: %" PRId64 " (fd %" PRId64 "), from %s\n",
+                    cpu->pc, addr, fd_offset, fd,
+                    is_stack ? "stack" : "program");
+        cpu->accumulator = sys_write(fd, is_stack ? stack : cpu->program,
+                                     (int)base_addr, cpu->accumulator);
       } break;
       default:
         fprintf(stderr, "ERR: Unknown syscall %d at PC %" PRId64 "\n",

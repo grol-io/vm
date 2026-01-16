@@ -197,6 +197,41 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 			return sysWrite(fd, stack, stackPtr-int(addr), int(accumulator)), false
 		}
 		return sysWrite(fd, memory, int(int64(pc)+addr), int(accumulator)), false
+	case Open:
+		addr, flags := splitUnsigned8bits(operand)
+		mode := 0o644 // Default mode for creation (rw-r--r--), mostly ignored for O_RDONLY
+		if isStack {
+			// addr is offset from stackPtr
+			return sysOpen(stack, stackPtr-int(addr), int(flags), mode), false
+		}
+		if addr == 0 {
+			// use accumulator as address
+			return sysOpen(memory, int(accumulator), int(flags), mode), false
+		}
+		return sysOpen(memory, int(int64(pc)+addr), int(flags), mode), false
+	case Close:
+		// Fd in A
+		return sysClose(accumulator), false
+	case ReadF:
+		addr, fdOffset := splitUnsigned8bits(operand)
+		var fd int64
+		if isStack {
+			// fd is at stackPtr - fdOffset
+			fd = int64(stack[stackPtr-int(fdOffset)])
+			return sysRead(fd, stack, stackPtr-int(addr), int(accumulator)), false
+		}
+		// fd is at pc + fdOffset
+		fd = int64(memory[int(int64(pc)+fdOffset)])
+		return sysRead(fd, memory, int(int64(pc)+addr), int(accumulator)), false
+	case WriteF:
+		addr, fdOffset := splitUnsigned8bits(operand)
+		var fd int64
+		if isStack {
+			fd = int64(stack[stackPtr-int(fdOffset)])
+			return sysWrite(fd, stack, stackPtr-int(addr), int(accumulator)), false
+		}
+		fd = int64(memory[int(int64(pc)+fdOffset)])
+		return sysWrite(fd, memory, int(int64(pc)+addr), int(accumulator)), false
 	default:
 		log.Errf("Unknown syscall: %d", syscall)
 	}
