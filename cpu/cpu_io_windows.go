@@ -58,8 +58,6 @@ func sysClose(fd int64) int64 {
 }
 
 // fdMap maps numeric file descriptors to os.File objects.
-// Once we implement close() we would remove entries from this map, for
-// now we keep them indefinitely.
 var fdMap = map[int64]*os.File{
 	0: os.Stdin,
 	1: os.Stdout,

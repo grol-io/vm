@@ -460,7 +460,7 @@ void run_program(CPU *cpu) {
         memcpy(path, data, length);
         path[length] = '\0';
 
-        int mode = 0600;
+        int mode = 0644;
         int fd = open(path, (int)flags, mode);
         DEBUG_PRINT("Open syscall at PC %" PRId64 ", path: %s, flags: %" PRId64
                     " -> fd: %d\n",

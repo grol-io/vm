@@ -30,7 +30,7 @@ func sysOpen(memory []Operation, pathAddr, flags, mode int) int64 {
 	length := int(memAsBytes[byteOffset])
 	path = string(memAsBytes[byteOffset+1 : byteOffset+1+length])
 
-	fd, err := syscall.Open(path, flags, uint32(mode)) //nolint:gosec // mode is hardcoded 0o600
+	fd, err := syscall.Open(path, flags, uint32(mode)) //nolint:gosec // int and uint32 are fine here
 	if err != nil {
 		log.Errf("Failed to open file %q: %v", path, err)
 		return -1

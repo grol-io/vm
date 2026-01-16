@@ -199,7 +199,7 @@ func executeSyscall(syscall Syscall, operand, accumulator int64,
 		return sysWrite(fd, memory, int(int64(pc)+addr), int(accumulator)), false
 	case Open:
 		addr, flags := splitUnsigned8bits(operand)
-		mode := 0o600 // Default mode for creation (rw-------), mostly ignored for O_RDONLY
+		mode := 0o644 // Default mode for creation (rw-r--r--), mostly ignored for O_RDONLY
 		if isStack {
 			// addr is offset from stackPtr
 			return sysOpen(stack, stackPtr-int(addr), int(flags), mode), false
