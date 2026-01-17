@@ -45,8 +45,8 @@ wc-test: vm grol_cvm
 	./grol_cvm programs/wc.vm programs/*.asm > /tmp/wc_all_output
 	diff /tmp/wc_all_expected /tmp/wc_all_output
 	# error case --- file doesn't exist will abort with error message on stderr
-	! ./vm run -quiet programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm
-	! ./grol_cvm programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm
+	./vm run -loglevel critical programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
+	./grol_cvm programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
 
 echo-test: vm grol_cvm
 	./vm compile programs/echo.asm
