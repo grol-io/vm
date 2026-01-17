@@ -31,7 +31,7 @@ arg_loop:
     ; Open file
     ; Sys Open flags path
     Sys Open O_RDONLY 0 ; flags=O_RDONLY(0), path=0(Accumulator)
-    JLT 0 open_error
+    JLT 0 sys_error
     Push 0; fd_param
 
     Call count_lines
@@ -43,7 +43,7 @@ arg_loop:
     ; Close file
     Pop 0; fd_param
     Sys Close 0
-    JNE 0 open_error ; really a close error but... reuse same path/exit.
+    JNE 0 sys_error
     ; Print current file count
     LoadR cur_count
     Call itoa
@@ -60,9 +60,9 @@ arg_loop:
 no_total_print:
     Sys Exit 0
 
-open_error:
+sys_error:
     Sys Write8 STDOUT stdout_err_msg
-    Sys Write8 STDERR open_err_msg
+    Sys Write8 STDERR err_msg
     Pop 0
     Sys Write8 STDERR 0 ; filename from A
     Sys Write8 STDERR newline_str
@@ -92,7 +92,8 @@ not_newline:
     JGT 0 count_loop
     JumpR read_loop
 check_result:
-    JNE 0 open_error ; error case
+    JNE 0 sys_error ; error case, abort
+    ; else EOF case, return count
     LoadS count
     Return; Will generate ret 35 (cleanup stack variables (32 + 3 = 35 words))
 
@@ -109,8 +110,8 @@ space_str:
     str8 " "
 newline_str:
     str8 "\n"
-open_err_msg:
-    str8 "Error: cannot open file "
+err_msg:
+    str8 "File error: "
 stdout_err_msg:
     str8 "...err...\n"
 total_label:
