@@ -378,10 +378,10 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 			var totalWords int64
 			for _, arg := range args {
 				count := int64(1)
-				if idx := strings.Index(arg, "["); idx >= 0 {
+				if before, after, ok := strings.Cut(arg, "["); ok {
 					// Parse var[N] syntax: reserve N slots with label pointing to the last
-					varName := arg[:idx]
-					countStr := strings.TrimSuffix(arg[idx+1:], "]")
+					varName := before
+					countStr := strings.TrimSuffix(after, "]")
 					var err error
 					count, err = resolver.ResValue(countStr)
 					if err != nil {
