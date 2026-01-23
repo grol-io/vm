@@ -106,7 +106,8 @@ grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 
 cvm-loop: grol_cvm
 	# don't use $(CVM) (grol_cvm.exe) here as that fails to find with time on windows
-	time ./grol_cvm programs/loop.vm
+	ls -l .
+	time ./grol_cvm programs/loop.vm # comment needed somehow
 
 fact: vm grol_cvm
 	./vm compile programs/fact.asm programs/itoa.asm
