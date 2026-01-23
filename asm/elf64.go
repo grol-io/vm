@@ -643,8 +643,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 					writable = true
 					strData = dataSection
 				} else {
-					log.Warnf("Write8 target PC %d (from PC %d + offset %d) not found in data offsets", targetPC, pc, addr)
-					continue
+					return log.FErrf("Write8 target PC %d (from PC %d + offset %d) not found in data offsets", targetPC, pc, addr)
 				}
 
 				// Read length from str8 data (first byte)
