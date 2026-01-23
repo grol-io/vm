@@ -3,7 +3,7 @@ hello-asm:
 	mv ./sample/hello ./prg
 
 hello-go:
-	GOOS=linux GOARCH=amd64 go build -o prg ./sample
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s" -trimpath -o prg ./sample
 
 BASE_TAG:=ghcr.io/grol-io/vm-base
 VERSION:=latest
