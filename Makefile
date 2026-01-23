@@ -114,9 +114,9 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 
 nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
-	time ./a.out programs/loop.vm
+	time ./a.out
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DNOVOLATILE cvm/loop.c
-	time ./a.out programs/loop.vm
+	time ./a.out
 
 elf64: vm
 	$(MAKE) -C native test-loop-native
