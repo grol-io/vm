@@ -44,7 +44,20 @@ docker run --rm --platform linux/amd64 -v "$PWD/sample:/sample:ro" alpine:latest
 - **Page alignment**: Data segment placed on separate 4KB page to avoid permission conflicts
 - **Data classification**: `str8` → rodata (read-only), `data`/`.space` → writable data segment
 - **RIP-relative addressing**: LoadR/StoreR use RIP-relative `mov` instructions
-- **Currently implemented**: `LoadI`, `AddI`, `LoadR`, `StoreR`, `JNE`, `Sys Exit`, `Sys Write8`
+- **Jump patching**: Single-pass code generation with deferred displacement patching for variable-length x86-64
+
+### Currently Implemented for Native ELF64
+**Instructions**: `LoadI`, `AddI`, `LoadR`, `StoreR`, `JNE`
+**Syscalls**: `Exit`, `Write8`
+
+### Next Steps for Native ELF64 (priority order)
+1. Other conditional jumps: `JEQ`, `JLT`, `JGT`, `JGTE`, `JLTE` (x86 opcodes already defined in elf64.go)
+2. `JumpR` (unconditional jump)
+3. More ALU: `SubI`, `MulI`, `DivI`, `ModI`, `ShiftI`, `AndI`
+4. PC-relative ALU: `AddR`, `SubR`, `MulR`, `DivR`, `IncrR`
+5. Stack operations: `Push`, `Pop`, `Call`, `Ret`, `LoadS`, `StoreS`, etc.
+6. More syscalls: `Read8`, `ReadN`, `WriteN` (for programs like cat, wc)
+7. Goal: full programs like `echo.asm`, `cat.asm`, `wc.asm`
 
 ### Native Test Programs
 - [native/sample/hello.asm](../native/sample/hello.asm): Write8 + Exit (rodata only)
