@@ -123,9 +123,9 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 
 nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
-	time ./a.out
+	time ./a.out # comment needed to avoid CreateProcess(NULL, time ./a.out, ...) failed.
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DNOVOLATILE cvm/loop.c
-	time ./a.out
+	time ./a.out # comment for windows
 
 elf64: vm
 	$(MAKE) -C native test-loop-native
