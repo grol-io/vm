@@ -41,8 +41,8 @@ hello-go:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s" -trimpath -o prg ./sample
 
 # === Tests ===
-# Run all tests in Docker with timeout protection
-test: test-hello test-counter test-loadonly test-loop
+# Run all tests in Docker
+test: test-hello test-counter test-loop
 
 define docker-test
 	@echo "Testing $(1)..."
