@@ -18,7 +18,7 @@ GO_BUILD_TAGS:=no_net,no_pprof
 itoa-test: vm grol_cvm
 	./vm compile programs/itoa.asm
 	./vm run -quiet programs/itoa.vm
-	./grol_cvm programs/itoa.vm
+	$(CVM) programs/itoa.vm
 
 SAMPLE_CAT:=cpu/cpu.go
 
@@ -26,12 +26,12 @@ cat-test: vm grol_cvm
 	./vm compile programs/cat.asm
 	./vm run -quiet programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
-	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
+	$(CVM) programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
 	/bin/echo -n "A" > /tmp/cat_input
 	./vm run -quiet programs/cat.vm < /tmp/cat_input > /tmp/cat_single
 	cmp /tmp/cat_input /tmp/cat_single
-	./grol_cvm programs/cat.vm < /tmp/cat_input > /tmp/cat_single
+	$(CVM) programs/cat.vm < /tmp/cat_input > /tmp/cat_single
 	cmp /tmp/cat_input /tmp/cat_single
 
 wc-test: vm grol_cvm
@@ -39,23 +39,23 @@ wc-test: vm grol_cvm
 	./vm run -quiet programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
 	wc -l < $(SAMPLE_CAT) | awk '{print $$1}' > /tmp/wc_expected
 	diff /tmp/wc_expected /tmp/wc_output
-	./grol_cvm programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
+	$(CVM) programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
 	od -c /tmp/wc_expected
 	od -c /tmp/wc_output
 	diff /tmp/wc_expected /tmp/wc_output
 	./vm run -quiet programs/wc.vm programs/*.asm > /tmp/wc_all_output
 	wc -l programs/*.asm | awk '/total/ {print("total:", $$1)} !/total/{print($$2, $$1)}' > /tmp/wc_all_expected
 	diff /tmp/wc_all_expected /tmp/wc_all_output
-	./grol_cvm programs/wc.vm programs/*.asm > /tmp/wc_all_output
+	$(CVM) programs/wc.vm programs/*.asm > /tmp/wc_all_output
 	diff /tmp/wc_all_expected /tmp/wc_all_output
 	# error case --- file doesn't exist will abort with error message on stderr
 	./vm run -loglevel critical programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
-	./grol_cvm programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
+	$(CVM) programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
 
 echo-test: vm grol_cvm
 	./vm compile programs/echo.asm
 	./vm run -quiet programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
-	./grol_cvm programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
+	$(CVM) programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
@@ -91,26 +91,33 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc
 
+# On Windows, executables need .exe suffix
+ifeq ($(OS),Windows_NT)
+  CVM:=./grol_cvm.exe
+else
+  CVM:=./grol_cvm
+endif
+
 cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 	./vm genh > cvm/cvm.h
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
-	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o $(CVM) cvm/cvm.c
 
 cvm-loop: grol_cvm
-	time ./grol_cvm programs/loop.vm
+	time $(CVM) programs/loop.vm
 
 fact: vm grol_cvm
 	./vm compile programs/fact.asm programs/itoa.asm
 	./vm run -quiet programs/fact.vm
-	./grol_cvm programs/fact.vm
+	$(CVM) programs/fact.vm
 
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
-	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
-	./grol_cvm programs/simple.vm
-	./grol_cvm programs/addr.vm
-	./grol_cvm programs/incr.vm
-	./grol_cvm programs/itoa.vm
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o $(CVM) cvm/cvm.c
+	$(CVM) programs/simple.vm
+	$(CVM) programs/addr.vm
+	$(CVM) programs/incr.vm
+	$(CVM) programs/itoa.vm
 
 nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
