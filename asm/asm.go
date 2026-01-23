@@ -17,15 +17,16 @@ import (
 )
 
 type Line struct {
-	Op    cpu.Operation
-	Label string
-	Data  bool
+	Op       cpu.Operation
+	Label    string
+	Data     bool
+	ReadOnly bool // True for str8 string constants, false for data/space (writable)
 	// How many bits remain for the final operand/address
 	// (56 = full, 48 = one 8-bit packed, 40 = two 8-bit packed, etc.)
 	remainingBits int
 }
 
-func Compile(files ...string) int {
+func Compile(elf64 bool, files ...string) int {
 	readers := make([]io.Reader, 0, len(files))
 	var writer *bufio.Writer
 	for i, file := range files {
@@ -40,21 +41,30 @@ func Compile(files ...string) int {
 			return log.FErrf("Invalid file extension for %s, expected .asm", file)
 		}
 		if i == 0 {
-			outputFile := strings.TrimSuffix(file, ".asm") + ".vm"
+			mode := os.FileMode(0o644)
+			ext := ".vm"
+			if elf64 {
+				ext = ""
+				mode = 0o755
+			}
+			outputFile := strings.TrimSuffix(file, ".asm") + ext
 			log.Infof("Output file: %s", outputFile)
-			out, err := os.Create(outputFile)
+
+			out, err := os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 			if err != nil {
 				return log.FErrf("Failed to create output file %s: %v", outputFile, err)
 			}
 			defer out.Close()
 			writer = bufio.NewWriter(out)
 			defer writer.Flush()
-			_, _ = writer.WriteString(cpu.HEADER)
+			if !elf64 {
+				_, _ = writer.WriteString(cpu.HEADER)
+			}
 		}
 		readers = append(readers, f)
 	}
 	reader := bufio.NewReader(io.MultiReader(readers...))
-	return compile(reader, writer)
+	return compile(elf64, reader, writer)
 }
 
 //nolint:gocyclo // it's a full parser.
@@ -271,15 +281,16 @@ func serializeStr8(b []byte) []Line {
 	result := make([]Line, 0, len(ops))
 	for _, op := range ops {
 		result = append(result, Line{
-			Op:   op,
-			Data: true,
+			Op:       op,
+			Data:     true,
+			ReadOnly: true, // String constants are read-only
 		})
 	}
 	return result
 }
 
 //nolint:gocognit,funlen,gocyclo,maintidx // yes it is a full assembler...
-func compile(reader *bufio.Reader, writer *bufio.Writer) int {
+func compile(elf64 bool, reader *bufio.Reader, writer *bufio.Writer) int {
 	pc := cpu.ImmediateData(0)
 	resolver := NewResolver()
 	returnN := 0
@@ -534,6 +545,9 @@ func compile(reader *bufio.Reader, writer *bufio.Writer) int {
 		}
 		result = append(result, Line{Op: op, Label: label, Data: data, remainingBits: remainingBits})
 		pc++
+	}
+	if elf64 {
+		return EmitELF64(writer, result, resolver)
 	}
 	return emitCode(writer, result, resolver)
 }

@@ -1,9 +1,13 @@
 # all: generate lint check test run
 
-all: clean generate lint test run cvm-loop native
+all: clean generate lint run test
+
+test: vm unit-tests itoa-test fact cat-test wc-test echo-test timing-tests
+
+timing-tests: timing-loop cvm-loop nativecloop elf64
 
 clean:
-	rm -f vm grol_cvm tiny_vm a.out
+	rm -f vm grol_cvm tiny_vm a.out native/sample/loop
 
 # Use that tags to test the non select cases (wasi, windows,...): test_alt_timeoutreader
 # GO_BUILD_TAGS:=no_net,no_pprof,test_alt_timeoutreader
@@ -14,7 +18,7 @@ GO_BUILD_TAGS:=no_net,no_pprof
 itoa-test: vm grol_cvm
 	./vm compile programs/itoa.asm
 	./vm run -quiet programs/itoa.vm
-	./grol_cvm programs/itoa.vm
+	$(CVM) programs/itoa.vm
 
 SAMPLE_CAT:=cpu/cpu.go
 
@@ -22,12 +26,12 @@ cat-test: vm grol_cvm
 	./vm compile programs/cat.asm
 	./vm run -quiet programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
-	./grol_cvm programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
+	$(CVM) programs/cat.vm < $(SAMPLE_CAT) > /tmp/cat_output
 	cmp $(SAMPLE_CAT) /tmp/cat_output
 	/bin/echo -n "A" > /tmp/cat_input
 	./vm run -quiet programs/cat.vm < /tmp/cat_input > /tmp/cat_single
 	cmp /tmp/cat_input /tmp/cat_single
-	./grol_cvm programs/cat.vm < /tmp/cat_input > /tmp/cat_single
+	$(CVM) programs/cat.vm < /tmp/cat_input > /tmp/cat_single
 	cmp /tmp/cat_input /tmp/cat_single
 
 wc-test: vm grol_cvm
@@ -35,23 +39,23 @@ wc-test: vm grol_cvm
 	./vm run -quiet programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
 	wc -l < $(SAMPLE_CAT) | awk '{print $$1}' > /tmp/wc_expected
 	diff /tmp/wc_expected /tmp/wc_output
-	./grol_cvm programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
+	$(CVM) programs/wc.vm < $(SAMPLE_CAT) > /tmp/wc_output
 	od -c /tmp/wc_expected
 	od -c /tmp/wc_output
 	diff /tmp/wc_expected /tmp/wc_output
 	./vm run -quiet programs/wc.vm programs/*.asm > /tmp/wc_all_output
 	wc -l programs/*.asm | awk '/total/ {print("total:", $$1)} !/total/{print($$2, $$1)}' > /tmp/wc_all_expected
 	diff /tmp/wc_all_expected /tmp/wc_all_output
-	./grol_cvm programs/wc.vm programs/*.asm > /tmp/wc_all_output
+	$(CVM) programs/wc.vm programs/*.asm > /tmp/wc_all_output
 	diff /tmp/wc_all_expected /tmp/wc_all_output
 	# error case --- file doesn't exist will abort with error message on stderr
 	./vm run -loglevel critical programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
-	./grol_cvm programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
+	$(CVM) programs/wc.vm programs/wc.asm nofilesuchfile programs/simple.asm; test $$? -eq 1
 
 echo-test: vm grol_cvm
 	./vm compile programs/echo.asm
 	./vm run -quiet programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
-	./grol_cvm programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
+	$(CVM) programs/echo.vm A B "" "4th argument (after empty one) a bit longer"
 
 run: vm
 	./vm compile -loglevel debug programs/simple.asm
@@ -68,12 +72,15 @@ run: vm
 	./vm run -loglevel debug programs/rune_literal.vm
 	./vm compile -loglevel debug programs/incr.asm
 	./vm run -loglevel debug programs/incr.vm
-	./vm compile -loglevel debug programs/loop.asm
 	./vm compile -loglevel debug programs/pow.asm
 	./vm run -loglevel debug programs/pow.vm
 	./vm compile programs/compare_neg.asm programs/itoa.asm
 	./vm run -quiet programs/compare_neg.vm
-	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
+
+timing-loop: vm
+	./vm compile -loglevel debug programs/loop.asm
+	time ./vm run -profile-cpu cpu.pprof programs/loop.vm # with profiler on
+	time ./vm run -quiet programs/loop.vm # without
 
 GEN:=cpu/instruction_string.go cpu/syscall_string.go
 
@@ -84,30 +91,44 @@ vm: Makefile *.go */*.go $(GEN)
 
 CC:=gcc
 
+# On Windows, executables need .exe suffix
+ifeq ($(OS),Windows_NT)
+  CVM:=./grol_cvm.exe
+  AOUT:=./a.exe
+else
+  CVM:=./grol_cvm
+  AOUT:=./a.out
+endif
+
 cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
 	./vm genh > cvm/cvm.h
 
 grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
-	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o grol_cvm cvm/cvm.c
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o $(CVM) cvm/cvm.c
 
 cvm-loop: grol_cvm
-	time ./grol_cvm programs/loop.vm
+	time $(CVM) programs/loop.vm # comment needed somehow
 
 fact: vm grol_cvm
 	./vm compile programs/fact.asm programs/itoa.asm
 	./vm run -quiet programs/fact.vm
-	./grol_cvm programs/fact.vm
+	$(CVM) programs/fact.vm
 
 debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
-	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o grol_cvm cvm/cvm.c
-	./grol_cvm programs/simple.vm
-	./grol_cvm programs/addr.vm
-	./grol_cvm programs/incr.vm
-	./grol_cvm programs/itoa.vm
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DDEBUG=1 -o $(CVM) cvm/cvm.c
+	$(CVM) programs/simple.vm
+	$(CVM) programs/addr.vm
+	$(CVM) programs/incr.vm
+	$(CVM) programs/itoa.vm
 
-native: Makefile cvm/loop.c
+nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
-	time ./a.out programs/loop.vm
+	time $(AOUT) # comment needed to avoid CreateProcess(NULL, time ./a.out, ...) failed.
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DNOVOLATILE cvm/loop.c
+	time $(AOUT) # comment for windows
+
+elf64: vm
+	$(MAKE) -C native test-loop-native
 
 TINY_OPTS:=-opt 2
 tiny_vm: Makefile *.go */*.go $(GEN)
@@ -124,9 +145,6 @@ install:
 	CGO_ENABLED=0 go install -trimpath -ldflags="-s" -tags "$(GO_BUILD_TAGS)" grol.io/vm@$(GIT_TAG)
 	ls -lh "$(shell go env GOPATH)/bin/vm"
 	vm version
-
-
-test: vm unit-tests itoa-test fact cat-test wc-test echo-test
 
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
@@ -145,8 +163,8 @@ cpu/instruction_string.go: cpu/instruction.go
 cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
-.PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test echo-test
+.PHONY: all lint generate test clean run build install unit-tests elf64 timing-loop cvm-loop timing-tests
+.PHONY: show_cpu_profile show_mem_profile nativecloop debug-cvm fact cat-test wc-test echo-test
 
 show_cpu_profile:
 	-pkill pprof

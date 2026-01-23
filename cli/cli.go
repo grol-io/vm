@@ -33,6 +33,7 @@ func Main() int {
 	cli.ArgsHelp = "[<files>...]\nwhere command is one of: compile, genh, run"
 	cpuProf := flag.String("profile-cpu", "", "write CPU profile to file")
 	memProf := flag.String("profile-mem", "", "write memory profile to file")
+	elf64 := flag.Bool("elf64", false, "Target Linux ELF64 amd64 for compilation instead of VM binary format (compile command only)")
 	cli.Main()
 	log.Debugf("Command: %s, Args: %v", cli.Command, flag.Args())
 	if *cpuProf != "" {
@@ -52,7 +53,7 @@ func Main() int {
 	}
 	switch cli.Command {
 	case "compile":
-		return asm.Compile(flag.Args()...)
+		return asm.Compile(*elf64, flag.Args()...)
 	case "run":
 		return cpu.Run(flag.Args()...)
 	case "genh":
