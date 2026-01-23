@@ -392,7 +392,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			}
 
 		default:
-			log.Warnf("Unimplemented instruction: %v", opcode)
+			return log.FErrf("Unimplemented instruction: %v", opcode)
 		}
 	}
 
