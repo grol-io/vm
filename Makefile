@@ -94,8 +94,10 @@ CC:=gcc
 # On Windows, executables need .exe suffix
 ifeq ($(OS),Windows_NT)
   CVM:=./grol_cvm.exe
+  AOUT:=./a.exe
 else
   CVM:=./grol_cvm
+  AOUT:=./a.out
 endif
 
 cvm/cvm.h: vm asm/genh.go cpu/instruction.go cpu/syscall.go
@@ -105,9 +107,7 @@ grol_cvm: Makefile cvm/cvm.c cvm/cvm.h
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -o $(CVM) cvm/cvm.c
 
 cvm-loop: grol_cvm
-	# don't use $(CVM) (grol_cvm.exe) here as that fails to find with time on windows
-	ls -l .
-	time ./grol_cvm programs/loop.vm # comment needed somehow
+	time $(CVM) programs/loop.vm # comment needed somehow
 
 fact: vm grol_cvm
 	./vm compile programs/fact.asm programs/itoa.asm
@@ -123,9 +123,9 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 
 nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
-	time ./a.out # comment needed to avoid CreateProcess(NULL, time ./a.out, ...) failed.
+	time $(AOUT) # comment needed to avoid CreateProcess(NULL, time ./a.out, ...) failed.
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DNOVOLATILE cvm/loop.c
-	time ./a.out # comment for windows
+	time $(AOUT) # comment for windows
 
 elf64: vm
 	$(MAKE) -C native test-loop-native
