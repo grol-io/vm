@@ -49,7 +49,7 @@ docker run --rm --platform linux/amd64 -v "$PWD/sample:/sample:ro" alpine:latest
 ### Native Test Programs
 - [native/sample/hello.asm](../native/sample/hello.asm): Write8 + Exit (rodata only)
 - [native/sample/counter.asm](../native/sample/counter.asm): LoadR + AddI + StoreR + Exit (writable data)
-- [native/sample/loadonly.asm](../native/sample/loadonly.asm): LoadR + Exit (writable data, read-only test)
+- [native/sample/loop.asm](../native/sample/loop.asm): JNE test loop and perf test.
 
 ## Bytecode & Execution Model (project specifics)
 - File header: `"\x01GROL VM"` validated by loader (see [cpu/cpu.go](../cpu/cpu.go)).
