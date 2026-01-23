@@ -1,7 +1,9 @@
-hello-asm:
+hello-asm: ../vm
 	../vm compile -elf64 ./sample/hello.asm
 	mv ./sample/hello ./prg
 
+../vm:
+	$(MAKE) -C .. vm
 hello-go:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s" -trimpath -o prg ./sample
 
