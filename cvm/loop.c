@@ -21,6 +21,9 @@ ssize_t itoa_println(int64_t num) {
 }
 
 int main(void) {
+#ifndef NOVOLATILE
+  volatile
+#endif
   int64_t counter = 1000000000;
   while (counter != 0) {
     counter--;

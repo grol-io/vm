@@ -1,6 +1,10 @@
 # all: generate lint check test run
 
-all: clean generate lint test run cvm-loop nativecloop elf64
+all: clean generate lint run test
+
+test: vm unit-tests itoa-test fact cat-test wc-test echo-test timing-tests
+
+timing-tests: timing-loop cvm-loop nativecloop elf64
 
 clean:
 	rm -f vm grol_cvm tiny_vm a.out native/sample/loop
@@ -68,12 +72,15 @@ run: vm
 	./vm run -loglevel debug programs/rune_literal.vm
 	./vm compile -loglevel debug programs/incr.asm
 	./vm run -loglevel debug programs/incr.vm
-	./vm compile -loglevel debug programs/loop.asm
 	./vm compile -loglevel debug programs/pow.asm
 	./vm run -loglevel debug programs/pow.vm
 	./vm compile programs/compare_neg.asm programs/itoa.asm
 	./vm run -quiet programs/compare_neg.vm
-	time ./vm run -profile-cpu cpu.pprof programs/loop.vm
+
+timing-loop: vm
+	./vm compile -loglevel debug programs/loop.asm
+	time ./vm run -profile-cpu cpu.pprof programs/loop.vm # with profiler on
+	time ./vm run -quiet programs/loop.vm # without
 
 GEN:=cpu/instruction_string.go cpu/syscall_string.go
 
@@ -108,6 +115,8 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
 	time ./a.out programs/loop.vm
+	$(CC) -O3 -Wall -Wextra -pedantic -Werror -DNOVOLATILE cvm/loop.c
+	time ./a.out programs/loop.vm
 
 elf64: vm
 	$(MAKE) -C native test-loop-native
@@ -128,9 +137,6 @@ install:
 	ls -lh "$(shell go env GOPATH)/bin/vm"
 	vm version
 
-
-test: vm unit-tests itoa-test fact cat-test wc-test echo-test
-
 unit-tests:
 	CGO_ENABLED=0 go test -tags $(GO_BUILD_TAGS) ./...
 
@@ -148,7 +154,7 @@ cpu/instruction_string.go: cpu/instruction.go
 cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
-.PHONY: all lint generate test clean run build install unit-tests elf64
+.PHONY: all lint generate test clean run build install unit-tests elf64 timing-loop cvm-loop timing-tests
 .PHONY: show_cpu_profile show_mem_profile nativecloop debug-cvm fact cat-test wc-test echo-test
 
 show_cpu_profile:
