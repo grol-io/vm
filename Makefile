@@ -1,9 +1,9 @@
 # all: generate lint check test run
 
-all: clean generate lint test run cvm-loop native
+all: clean generate lint test run cvm-loop nativecloop elf64
 
 clean:
-	rm -f vm grol_cvm tiny_vm a.out
+	rm -f vm grol_cvm tiny_vm a.out native/sample/loop
 
 # Use that tags to test the non select cases (wasi, windows,...): test_alt_timeoutreader
 # GO_BUILD_TAGS:=no_net,no_pprof,test_alt_timeoutreader
@@ -105,9 +105,12 @@ debug-cvm: Makefile cvm/cvm.c cvm/cvm.h
 	./grol_cvm programs/incr.vm
 	./grol_cvm programs/itoa.vm
 
-native: Makefile cvm/loop.c
+nativecloop: Makefile cvm/loop.c
 	$(CC) -O3 -Wall -Wextra -pedantic -Werror cvm/loop.c
 	time ./a.out programs/loop.vm
+
+elf64: vm
+	$(MAKE) -C native test-loop-native
 
 TINY_OPTS:=-opt 2
 tiny_vm: Makefile *.go */*.go $(GEN)
@@ -145,8 +148,8 @@ cpu/instruction_string.go: cpu/instruction.go
 cpu/syscall_string.go: cpu/syscall.go
 	go generate ./cpu # if this fails go install golang.org/x/tools/cmd/stringer@latest
 
-.PHONY: all lint generate test clean run build install unit-tests
-.PHONY: show_cpu_profile show_mem_profile native debug-cvm fact cat-test wc-test echo-test
+.PHONY: all lint generate test clean run build install unit-tests elf64
+.PHONY: show_cpu_profile show_mem_profile nativecloop debug-cvm fact cat-test wc-test echo-test
 
 show_cpu_profile:
 	-pkill pprof

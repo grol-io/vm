@@ -17,9 +17,10 @@ import (
 )
 
 type Line struct {
-	Op    cpu.Operation
-	Label string
-	Data  bool
+	Op       cpu.Operation
+	Label    string
+	Data     bool
+	ReadOnly bool // True for str8 string constants, false for data/space (writable)
 	// How many bits remain for the final operand/address
 	// (56 = full, 48 = one 8-bit packed, 40 = two 8-bit packed, etc.)
 	remainingBits int
@@ -280,8 +281,9 @@ func serializeStr8(b []byte) []Line {
 	result := make([]Line, 0, len(ops))
 	for _, op := range ops {
 		result = append(result, Line{
-			Op:   op,
-			Data: true,
+			Op:       op,
+			Data:     true,
+			ReadOnly: true, // String constants are read-only
 		})
 	}
 	return result

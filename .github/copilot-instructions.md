@@ -3,11 +3,13 @@
 Purpose: help AI agents be productive quickly in this miniature assembler + VM project.
 
 ## Architecture & Data Flow
-- Assembler: parses `.asm` → emits `.vm` bytecode. See [asm/asm.go](../asm/asm.go).
+- Assembler: parses `.asm` → emits `.vm` bytecode OR native ELF64 binary. See [asm/asm.go](../asm/asm.go), [asm/elf64.go](../asm/elf64.go).
 - Go VM: reference CPU + runtime that executes `.vm`. See [cpu/cpu.go](../cpu/cpu.go).
 - C VM: performance-focused executor for the same bytecode. See [cvm/cvm.c](../cvm/cvm.c).
+- **Native ELF64**: generates standalone Linux x86-64 binaries (no runtime needed). See [asm/elf64.go](../asm/elf64.go).
 - Shared enums: instructions/syscalls defined in Go and generated for C. See [cpu/instruction.go](../cpu/instruction.go), [cpu/syscall.go](../cpu/syscall.go), generated header [cvm/cvm.h](../cvm/cvm.h).
 - Typical flow: `./vm compile programs/foo.asm` → `programs/foo.vm` → run via `./vm run ...` or `./grol_cvm ...`.
+- Native flow: `./vm compile -elf64 native/sample/hello.asm` → `native/sample/hello` (runs directly on Linux x86-64).
 
 ## Build & Run (Make targets encapsulate workflows)
 - Build binaries: `make vm grol_cvm`
@@ -18,6 +20,36 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 - TinyGo variant: `make tiny_vm` builds a TinyGo binary and runs a loop benchmark.
 - **Cross-platform testing**: Use `GOOS=windows GOARCH=amd64 go build .` to verify Windows compatibility.
 - **Code formatting**: Always run `gofumpt -w .` before committing to ensure consistent formatting.
+
+## Native ELF64 Generation
+The assembler can generate native Linux x86-64 ELF64 executables via `-elf64` flag:
+```sh
+./vm compile -elf64 native/sample/hello.asm  # Creates native/sample/hello
+```
+
+### Testing Native Binaries (requires Docker)
+Native binaries require Linux x86-64. On macOS (including arm64), use Docker:
+```sh
+cd native && make test  # Runs all native tests via Docker
+```
+
+**IMPORTANT**: On macOS with Rosetta emulation, busybox `timeout` doesn't work reliably. The Makefile uses a shell-based timeout pattern:
+```sh
+docker run --rm --platform linux/amd64 -v "$PWD/sample:/sample:ro" alpine:latest \
+  sh -c '/sample/program & pid=$!; sleep 1; kill -9 $pid 2>/dev/null || true; wait $pid 2>/dev/null; echo $?'
+```
+
+### Native ELF64 Architecture
+- **Two-segment layout**: Text (R+X) for code+rodata, Data (R+W) for writable data
+- **Page alignment**: Data segment placed on separate 4KB page to avoid permission conflicts
+- **Data classification**: `str8` → rodata (read-only), `data`/`.space` → writable data segment
+- **RIP-relative addressing**: LoadR/StoreR use RIP-relative `mov` instructions
+- **Currently implemented**: `LoadI`, `AddI`, `LoadR`, `StoreR`, `Sys Exit`, `Sys Write8`
+
+### Native Test Programs
+- [native/sample/hello.asm](../native/sample/hello.asm): Write8 + Exit (rodata only)
+- [native/sample/counter.asm](../native/sample/counter.asm): LoadR + AddI + StoreR + Exit (writable data)
+- [native/sample/loadonly.asm](../native/sample/loadonly.asm): LoadR + Exit (writable data, read-only test)
 
 ## Bytecode & Execution Model (project specifics)
 - File header: `"\x01GROL VM"` validated by loader (see [cpu/cpu.go](../cpu/cpu.go)).
@@ -44,6 +76,7 @@ Purpose: help AI agents be productive quickly in this miniature assembler + VM p
 ## Assembler Conventions
 - Labels: `label:`; operands for `*R` and control-flow can be label-relative.
 - Virtual directives: `data <int64>`, `str8 "..."` (length-prefixed, chunked into 64-bit words), `.space N`, `.const NAME VALUE` (define a named constant; can reference earlier constants; redefinition with a different value errors). Constants can be used anywhere a numeric value is accepted (immediates, `.space`, stack indices for `*S`, jump compare values, etc.).
+- **Data classification** (important for native ELF64): `str8` produces read-only data (rodata), while `data` and `.space` produce writable data. In native mode, these go to different segments with different permissions.
 - Stack declarations: `Var v1 v2 ...` (emits `Push` and defines stack labels), `Param p1 p2 ...` (caller-pushed parameter labels), `Return` (emits `Ret` to unwind `Var`).
 - argv initialization: host pushes argument addresses in reverse order, then `argc`; `SP` points at `argc`. See [programs/echo.asm](../programs/echo.asm).
 
@@ -75,9 +108,15 @@ make vm grol_cvm
 # Generate helpers and C header
 make generate
 make cvm/cvm.h
+
+# Native ELF64: compile and test (requires Docker on macOS)
+./vm compile -elf64 native/sample/hello.asm
+cd native && make test
 ```
 
 ## When Adding Instructions or Syscalls (checklist)
 1) Update Go enums/source; 2) regenerate stringers; 3) update assembler encoding ([asm/asm.go](../asm/asm.go)); 4) implement Go exec ([cpu/cpu.go](../cpu/cpu.go)); 5) regenerate C header; 6) implement C exec ([cvm/cvm.c](../cvm/cvm.c)); 7) add example/tests under [programs/](../programs) and run `make test`.
+
+**For native ELF64**: Also implement x86-64 code generation in [asm/elf64.go](../asm/elf64.go) and test via `cd native && make test`.
 
 For deeper semantics, read execution switches in [cpu/cpu.go](../cpu/cpu.go) and [cvm/cvm.c](../cvm/cvm.c), and encoding in [asm/asm.go](../asm/asm.go).

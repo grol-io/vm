@@ -21,7 +21,7 @@ ssize_t itoa_println(int64_t num) {
 }
 
 int main(void) {
-  volatile int64_t counter = 1000000000;
+  int64_t counter = 1000000000;
   while (counter != 0) {
     counter--;
   }
