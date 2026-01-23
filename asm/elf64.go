@@ -667,7 +667,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 				elf.emitSyscall()
 
 			default:
-				log.Warnf("Unimplemented syscall: %v", syscallID)
+				return log.FErrf("Unimplemented syscall: %v", syscallID)
 			}
 
 		default:
