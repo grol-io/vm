@@ -44,7 +44,7 @@ docker run --rm --platform linux/amd64 -v "$PWD/sample:/sample:ro" alpine:latest
 - **Page alignment**: Data segment placed on separate 4KB page to avoid permission conflicts
 - **Data classification**: `str8` → rodata (read-only), `data`/`.space` → writable data segment
 - **RIP-relative addressing**: LoadR/StoreR use RIP-relative `mov` instructions
-- **Currently implemented**: `LoadI`, `AddI`, `LoadR`, `StoreR`, `Sys Exit`, `Sys Write8`
+- **Currently implemented**: `LoadI`, `AddI`, `LoadR`, `StoreR`, `JNE`, `Sys Exit`, `Sys Write8`
 
 ### Native Test Programs
 - [native/sample/hello.asm](../native/sample/hello.asm): Write8 + Exit (rodata only)
