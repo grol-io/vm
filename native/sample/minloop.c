@@ -6,5 +6,4 @@ int main(void) {
     counter--;
     asm volatile("" : "+r"(counter));
   }
-  return (int)(counter);
 }
