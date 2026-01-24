@@ -28,6 +28,12 @@ const (
 	Elf64PhdrSize    = 56       // Program header size in bytes
 	Elf64PageSize    = 0x1000   // Page size for alignment
 	Elf64BaseAddress = 0x400000 // Traditional Linux base address
+
+	x86Nop = 0x90 // x86 NOP instruction
+	rexW   = 0x48 // REX.W prefix
+	rexWB  = 0x49 // REX.WB prefix (high register in r/m)
+	rexWR  = 0x4C // REX.WR prefix (high register in reg)
+	rexWRB = 0x4D // REX.WRB prefix (high registers in reg and r/m)
 )
 
 // ELF64Header represents the ELF64 file header.
@@ -157,6 +163,16 @@ func (e *ELF64Binary) emitBytes(bytes ...byte) {
 	e.code = append(e.code, bytes...)
 }
 
+// emitRex emits the provided high-register REX prefix when needed; otherwise uses RexW.
+func (e *ELF64Binary) emitRex(reg *int, highPrefix byte) {
+	if *reg >= 8 {
+		e.emitBytes(highPrefix)
+		*reg -= 8
+		return
+	}
+	e.emitBytes(rexW)
+}
+
 // emitMovImm32 emits: mov reg, imm32 (zero-extended to 64-bit).
 // Use for values 0 to 2^31-1.
 func (e *ELF64Binary) emitMovImm32(reg int, imm int32) {
@@ -174,12 +190,7 @@ func (e *ELF64Binary) emitMovImm32(reg int, imm int32) {
 // emitMovImm64 emits: mov reg, imm64 (REX.W + B8+rd + imm64).
 // Use for values that don't fit in 32 bits.
 func (e *ELF64Binary) emitMovImm64(reg int, imm int64) {
-	if reg >= 8 {
-		e.emitBytes(0x49) // REX.WB
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWB)
 	e.emitBytes(byte(0xB8 + reg)) // MOV r64, imm64
 	// Little-endian immediate
 	for i := range 8 {
@@ -216,12 +227,7 @@ func (e *ELF64Binary) emitSubImm(reg int, imm int64) {
 // modRMBase is the base ModR/M byte (e.g., 0xC0 for ADD, 0xE8 for SUB).
 func (e *ELF64Binary) emitALUImm(reg int, imm int64, raxOpcode, modRMBase byte) {
 	// REX.W for 64-bit operation
-	if reg >= 8 {
-		e.emitBytes(0x49) // REX.WB
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWB)
 	switch {
 	case reg == RAX && (imm < -128 || imm > 127):
 		// Special encoding for RAX with 32-bit immediate
@@ -253,12 +259,7 @@ func (e *ELF64Binary) emitSyscall() {
 // Returns the offset in code where the 32-bit displacement is stored (for patching).
 func (e *ELF64Binary) emitLeaRipRelative(reg int, offset int32) int {
 	// REX prefix
-	if reg >= 8 {
-		e.emitBytes(0x4C) // REX.WR
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWR)
 	e.emitBytes(0x8D)                    // LEA
 	e.emitBytes(byte((reg << 3) | 0x05)) // ModR/M: reg, [rip+disp32]
 	dispOffset := len(e.code)            // Remember where displacement goes
@@ -273,12 +274,7 @@ func (e *ELF64Binary) emitLeaRipRelative(reg int, offset int32) int {
 // Returns the offset in code where the 32-bit displacement is stored (for patching).
 func (e *ELF64Binary) emitMovFromRipRelative(reg int) int {
 	// REX.W prefix for 64-bit operand
-	if reg >= 8 {
-		e.emitBytes(0x4C) // REX.WR
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWR)
 	e.emitBytes(0x8B)                    // MOV r64, r/m64
 	e.emitBytes(byte((reg << 3) | 0x05)) // ModR/M: reg, [rip+disp32]
 	dispOffset := len(e.code)            // Remember where displacement goes
@@ -291,12 +287,7 @@ func (e *ELF64Binary) emitMovFromRipRelative(reg int) int {
 // Returns the offset in code where the 32-bit displacement is stored (for patching).
 func (e *ELF64Binary) emitMovToRipRelative(reg int) int {
 	// REX.W prefix for 64-bit operand
-	if reg >= 8 {
-		e.emitBytes(0x4C) // REX.WR
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWR)
 	e.emitBytes(0x89)                    // MOV r/m64, r64
 	e.emitBytes(byte((reg << 3) | 0x05)) // ModR/M: [rip+disp32], reg
 	dispOffset := len(e.code)            // Remember where displacement goes
@@ -311,23 +302,13 @@ func (e *ELF64Binary) emitCmpImm(reg int, imm int64) {
 	// Special case: comparing to 0 is more efficient with TEST reg, reg
 	if imm == 0 {
 		// TEST r64, r64 sets ZF=1 if reg is zero (same effect as CMP reg, 0)
-		if reg >= 8 {
-			e.emitBytes(0x4D) // REX.WRB (both source and dest are high registers)
-			reg -= 8
-		} else {
-			e.emitBytes(0x48) // REX.W
-		}
+		e.emitRex(&reg, rexWRB)
 		// TEST r64, r64: opcode 0x85, ModR/M with mod=11, reg=reg, r/m=reg
 		e.emitBytes(0x85, byte(0xC0|(reg<<3)|reg))
 		return
 	}
 	// REX.W for 64-bit operation
-	if reg >= 8 {
-		e.emitBytes(0x49) // REX.WB
-		reg -= 8
-	} else {
-		e.emitBytes(0x48) // REX.W
-	}
+	e.emitRex(&reg, rexWB)
 	if imm >= -128 && imm <= 127 {
 		// CMP r/m64, imm8 (sign-extended)
 		e.emitBytes(0x83, byte(0xF8+reg))
@@ -660,7 +641,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			if alignment != 0 {
 				padding := 16 - alignment
 				for range padding {
-					elf.emitBytes(0x90) // NOPs
+					elf.emitBytes(x86Nop)
 				}
 			}
 		}
@@ -710,8 +691,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 
 		switch opcode {
 		case cpu.Nop:
-			// x86-64 NOP (0x90)
-			elf.emitBytes(0x90)
+			elf.emitBytes(x86Nop)
 
 		case cpu.LoadR:
 			// Load from PC-relative address: mov rax, [rip + offset]
