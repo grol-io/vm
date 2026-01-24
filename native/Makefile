@@ -68,10 +68,10 @@ test-loop: sample/loop
 	$(call docker-test,loop,0)
 
 # Native test (only works on Linux x86_64)
-test-loop-native: sample/loop_aligned
+test-loop-native: sample/loop
 ifeq ($(OS)/$(ARCH),Linux/x86_64)
 	@echo "Running loop natively on $(OS)/$(ARCH)..."
-	time ./sample/loop_aligned; echo "  Exit code: $$?"
+	time ./sample/loop; echo "  Exit code: $$?"
 else
 	@echo "Native test not supported on $(OS)/$(ARCH) (requires Linux/x86_64)"
 endif
