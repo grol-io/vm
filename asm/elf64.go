@@ -577,6 +577,10 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 		}
 
 		switch opcode {
+		case cpu.Nop:
+			// x86-64 NOP (0x90)
+			elf.emitBytes(0x90)
+
 		case cpu.LoadI:
 			// mov rax, immediate
 			elf.emitMovImm(RAX, operand)

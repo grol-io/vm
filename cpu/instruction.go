@@ -7,6 +7,7 @@ type Instruction uint8
 const (
 	InvalidInstruction Instruction = iota
 
+	Nop    // No operation (for alignment)
 	LoadI  // Load Immediate (param->A)
 	AddI   // A = A + param
 	SubI   // A = A - param

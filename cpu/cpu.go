@@ -261,6 +261,11 @@ func execute(pc ImmediateData, program []Operation, accumulator int64, stack []O
 				return accumulator, code
 			}
 			accumulator = code
+		case Nop:
+			// No operation - just advance PC
+			if Debug {
+				log.Debugf("Nop     at PC: %d", pc)
+			}
 		case LoadI:
 			accumulator = op.OperandInt64()
 			if Debug {
