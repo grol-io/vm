@@ -589,7 +589,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			// add rax, immediate
 			elf.emitAddImm(RAX, operand)
 		case cpu.SubI:
-			// sub rax, immediate (reuse emitAddImm with negated value)
+			// sub rax, immediate (use emitSubImm helper)
 			elf.emitSubImm(RAX, operand)
 		case cpu.JNE:
 			// Jump if not equal: compare RAX with value, jump if not equal
