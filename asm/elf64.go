@@ -592,7 +592,7 @@ func collectJumpTargets(result []Line, resolver *Resolver) map[int]bool {
 
 // EmitELF64 generates a native Linux ELF64 binary from the parsed assembly.
 //
-//nolint:gocognit,funlen,gocyclo,maintidx // code generator has inherent complexity
+//nolint:gocognit,funlen,maintidx // code generator has inherent complexity
 func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 	elf := NewELF64Binary()
 
