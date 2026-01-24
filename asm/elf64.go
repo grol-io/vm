@@ -511,9 +511,45 @@ func (e *ELF64Binary) WriteTo(w io.Writer) error {
 	return nil
 }
 
+// collectJumpTargets returns a set of VM PCs that are targets of conditional jumps.
+// These will be aligned to 16-byte boundaries for better instruction fetch performance.
+func collectJumpTargets(result []Line, resolver *Resolver) map[int]bool {
+	jumpTargets := make(map[int]bool)
+	for pc, line := range result {
+		if line.Data {
+			continue
+		}
+		op := line.Op
+		opcode := op.Opcode()
+
+		// Check if this is a conditional jump instruction
+		isCondJump := opcode == cpu.JNE || opcode == cpu.JEQ || opcode == cpu.JLT ||
+			opcode == cpu.JGT || opcode == cpu.JGTE || opcode == cpu.JLTE
+
+		if !isCondJump {
+			continue
+		}
+
+		// Resolve label to get target PC
+		if line.Label != "" {
+			targetPC, ok := resolver.Labels(line.Label)
+			if ok {
+				jumpTargets[int(targetPC)] = true
+			}
+		} else {
+			// Target already encoded in operand
+			operand := op.OperandInt64()
+			jumpOffset := operand >> 8
+			targetPC := pc + int(jumpOffset)
+			jumpTargets[targetPC] = true
+		}
+	}
+	return jumpTargets
+}
+
 // EmitELF64 generates a native Linux ELF64 binary from the parsed assembly.
 //
-//nolint:gocognit,funlen,maintidx // code generator has inherent complexity
+//nolint:gocognit,funlen,gocyclo,maintidx // code generator has inherent complexity
 func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 	elf := NewELF64Binary()
 
@@ -547,10 +583,33 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 		}
 	}
 
+	// First pass: collect jump targets for alignment
+	jumpTargets := collectJumpTargets(result, resolver)
+
+	// Calculate header size for alignment calculations
+	// (we need 2 phdrs if there's writable data, 1 otherwise)
+	numPhdrs := 1
+	if len(dataSection) > 0 {
+		numPhdrs = 2
+	}
+	headerSize := Elf64HeaderSize + numPhdrs*Elf64PhdrSize
+
 	// Generate code for each instruction
 	for pc, line := range result {
 		if line.Data {
 			continue // Skip data, it goes at the end
+		}
+
+		// Align jump targets to 16-byte boundary for better instruction fetch
+		if jumpTargets[pc] {
+			codeVaddr := Elf64BaseAddress + uint64(headerSize) + uint64(len(elf.code)) //nolint:gosec // small values
+			alignment := codeVaddr % 16
+			if alignment != 0 {
+				padding := 16 - alignment
+				for range padding {
+					elf.emitBytes(0x90) // NOP
+				}
+			}
 		}
 
 		// Track where this VM PC's code starts (for jump patching)
