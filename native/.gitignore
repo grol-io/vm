@@ -1,3 +1,4 @@
 prg
 sample/*
 !sample/*.asm
+!sample/*.c

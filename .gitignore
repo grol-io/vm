@@ -51,3 +51,4 @@ a.out.dSYM
 tiny_vm
 
 grol_cvm_debug
+*.s
