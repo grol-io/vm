@@ -194,6 +194,20 @@ func (e *ELF64Binary) emitMovImm(reg int, imm int64) {
 
 // emitAddImm emits: add reg, imm (sign-extended 32-bit immediate).
 func (e *ELF64Binary) emitAddImm(reg int, imm int64) {
+	// ADD: RAX special opcode 0x05, ModR/M base 0xC0
+	e.emitALUImm(reg, imm, 0x05, 0xC0)
+}
+
+// emitSubImm emits: sub reg, imm (sign-extended 32-bit immediate).
+func (e *ELF64Binary) emitSubImm(reg int, imm int64) {
+	// SUB: RAX special opcode 0x2D, ModR/M base 0xE8
+	e.emitALUImm(reg, imm, 0x2D, 0xE8)
+}
+
+// emitALUImm emits an ALU operation with immediate: op reg, imm
+// raxOpcode is the special opcode for RAX with 32-bit immediate (e.g., 0x05 for ADD, 0x2D for SUB)
+// modRMBase is the base ModR/M byte (e.g., 0xC0 for ADD, 0xE8 for SUB).
+func (e *ELF64Binary) emitALUImm(reg int, imm int64, raxOpcode, modRMBase byte) {
 	// REX.W for 64-bit operation
 	if reg >= 8 {
 		e.emitBytes(0x49) // REX.WB
@@ -203,14 +217,14 @@ func (e *ELF64Binary) emitAddImm(reg int, imm int64) {
 	}
 	switch {
 	case reg == RAX && (imm < -128 || imm > 127):
-		// Special encoding for RAX with 32-bit immediate: ADD RAX, imm32
-		e.emitBytes(0x05)
+		// Special encoding for RAX with 32-bit immediate
+		e.emitBytes(raxOpcode)
 	case imm >= -128 && imm <= 127:
-		// ADD r/m64, imm8 (sign-extended)
-		e.emitBytes(0x83, byte(0xC0+reg))
+		// r/m64, imm8 (sign-extended)
+		e.emitBytes(0x83, modRMBase+byte(reg))
 	default:
-		// ADD r/m64, imm32 (sign-extended)
-		e.emitBytes(0x81, byte(0xC0+reg))
+		// r/m64, imm32 (sign-extended)
+		e.emitBytes(0x81, modRMBase+byte(reg))
 	}
 	// Emit immediate
 	if imm >= -128 && imm <= 127 {
@@ -285,7 +299,21 @@ func (e *ELF64Binary) emitMovToRipRelative(reg int) int {
 }
 
 // emitCmpImm emits: cmp reg, imm (sign-extended 8-bit or 32-bit immediate).
+// For imm == 0, uses the more efficient "test reg, reg" instruction.
 func (e *ELF64Binary) emitCmpImm(reg int, imm int64) {
+	// Special case: comparing to 0 is more efficient with TEST reg, reg
+	if imm == 0 {
+		// TEST r64, r64 sets ZF=1 if reg is zero (same effect as CMP reg, 0)
+		if reg >= 8 {
+			e.emitBytes(0x4D) // REX.WRB (both source and dest are high registers)
+			reg -= 8
+		} else {
+			e.emitBytes(0x48) // REX.W
+		}
+		// TEST r64, r64: opcode 0x85, ModR/M with mod=11, reg=reg, r/m=reg
+		e.emitBytes(0x85, byte(0xC0|(reg<<3)|reg))
+		return
+	}
 	// REX.W for 64-bit operation
 	if reg >= 8 {
 		e.emitBytes(0x49) // REX.WB
@@ -556,7 +584,9 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 		case cpu.AddI:
 			// add rax, immediate
 			elf.emitAddImm(RAX, operand)
-
+		case cpu.SubI:
+			// sub rax, immediate (reuse emitAddImm with negated value)
+			elf.emitSubImm(RAX, operand)
 		case cpu.JNE:
 			// Jump if not equal: compare RAX with value, jump if not equal
 			// Operand layout: [48-bit jump offset][8-bit compare value]
