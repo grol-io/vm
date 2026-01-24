@@ -607,7 +607,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			if alignment != 0 {
 				padding := 16 - alignment
 				for range padding {
-					elf.emitBytes(0x90) // NOP
+					elf.emitBytes(0x90) // NOPs
 				}
 			}
 		}
