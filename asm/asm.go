@@ -318,9 +318,9 @@ func compile(elf64 bool, reader *bufio.Reader, writer *bufio.Writer) int {
 		args := fields[1:]
 		narg := len(args)
 		switch instr {
-		case "return":
+		case "nop", "return":
 			if narg != 0 {
-				return log.FErrf("Expecting 0 arguments for return, got %d (%v)", narg, args)
+				return log.FErrf("Expecting 0 arguments for %s, got %d (%v)", instr, narg, args)
 			}
 		case "var", "param", "sys", "syss": // one or more arguments
 			if narg == 0 {
@@ -420,6 +420,9 @@ func compile(elf64 bool, reader *bufio.Reader, writer *bufio.Writer) int {
 			}
 			log.Debugf("Param -> Defined parameters: %v", resolver.vars)
 			continue
+		case "nop":
+			data = false
+			op = op.SetOpcode(cpu.Nop)
 		case "return":
 			data = false
 			op = op.SetOpcode(cpu.Ret)

@@ -192,6 +192,9 @@ void run_program(CPU *cpu) {
     uint8_t opcode = get_opcode(op);
     int64_t operand = get_operand(op);
     switch (opcode) {
+    case Nop:
+      DEBUG_PRINT("Nop at PC %" PRId64 "\n", cpu->pc);
+      break;
     case LoadI:
       DEBUG_PRINT("LoadI %" PRId64 " at PC %" PRId64 "\n", operand, cpu->pc);
       cpu->accumulator = operand;
