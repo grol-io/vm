@@ -8,6 +8,30 @@ import (
 	"grol.io/vm/cpu"
 )
 
+// emitMultiNop emits optimal multi-byte NOPs for the given length.
+// borrowed from the Go compiler:
+// https://github.com/golang/go/blob/go1.25.6/src/cmd/internal/obj/x86/asm6.go#L1813-L1825
+var multiNop = [][]byte{
+	{0x90},
+	{0x66, 0x90},
+	{0x0F, 0x1F, 0x00},
+	{0x0F, 0x1F, 0x40, 0x00},
+	{0x0F, 0x1F, 0x44, 0x00, 0x00},
+	{0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00},
+	{0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00},
+	{0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00},
+	{0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00},
+}
+
+func emitMultiNop(elf *ELF64Binary, n uint64) {
+	l := uint64(len(multiNop))
+	for n > 0 {
+		pickedIdx := min(l, n) - 1 // length sequence at idx pickIdx is of length pickIdx+1
+		elf.emitBytes(multiNop[pickedIdx]...)
+		n -= pickedIdx + 1
+	}
+}
+
 // ELF64 constants.
 const (
 	ElfMag0          = 0x7f     // ELF magic byte 0
@@ -639,10 +663,7 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			codeVaddr := Elf64BaseAddress + uint64(headerSize) + uint64(len(elf.code)) //nolint:gosec // small values
 			alignment := codeVaddr % 16
 			if alignment != 0 {
-				padding := 16 - alignment
-				for range padding {
-					elf.emitBytes(x86Nop)
-				}
+				emitMultiNop(elf, 16-alignment)
 			}
 		}
 
