@@ -361,11 +361,29 @@ const (
 	x86JLE = 0x8E // Jump if less or equal (ZF=1 or SF≠OF)
 )
 
+// emitShiftImm emits: sal/sar rax, imm (arithmetic shift left/right).
+func (e *ELF64Binary) emitShiftImm(imm int64) {
+	// REX.W for 64-bit operation
+	e.emitBytes(rexW)
+	if imm >= -128 && imm <= 127 {
+		if imm >= 0 {
+			// SAL (shift arithmetic left): opcode 0xC1, ModR/M 0xE0 for RAX
+			e.emitBytes(0xC1, 0xE0, byte(imm))
+		} else {
+			// SAR (shift arithmetic right): opcode 0xC1, ModR/M 0xF8 for RAX
+			e.emitBytes(0xC1, 0xF8, byte(-imm))
+		}
+	} else {
+		log.Fatalf("ShiftI operand out of range: %d (must be -128 to 127)", imm)
+	}
+}
+
 // Instruction descriptor tables for concise lowering.
 var immToRAX = map[cpu.Instruction]func(*ELF64Binary, int64){
-	cpu.LoadI: func(e *ELF64Binary, v int64) { e.emitMovImm(RAX, v) },
-	cpu.AddI:  func(e *ELF64Binary, v int64) { e.emitAddImm(RAX, v) },
-	cpu.SubI:  func(e *ELF64Binary, v int64) { e.emitSubImm(RAX, v) },
+	cpu.LoadI:  func(e *ELF64Binary, v int64) { e.emitMovImm(RAX, v) },
+	cpu.AddI:   func(e *ELF64Binary, v int64) { e.emitAddImm(RAX, v) },
+	cpu.SubI:   func(e *ELF64Binary, v int64) { e.emitSubImm(RAX, v) },
+	cpu.ShiftI: func(e *ELF64Binary, v int64) { e.emitShiftImm(v) },
 }
 
 type condJumpDesc struct {
@@ -373,8 +391,10 @@ type condJumpDesc struct {
 }
 
 var condJumps = map[cpu.Instruction]condJumpDesc{
-	cpu.JNE: {opcode: x86JNE},
-	// Other conditional jumps can be added here when implemented.
+	cpu.JNE:  {opcode: x86JNE},
+	cpu.JEQ:  {opcode: x86JE},
+	cpu.JGTE: {opcode: x86JGE},
+	// Other conditional jumps (JLT, JGT, JLTE) can be added as needed.
 }
 
 // emitCondJump emits a conditional near jump with 32-bit displacement.
@@ -738,6 +758,16 @@ func EmitELF64(writer io.Writer, result []Line, resolver *Resolver) int {
 			} else {
 				return log.FErrf("StoreR target PC %d not found in data", targetPC)
 			}
+
+		case cpu.JumpR:
+			// Unconditional jump to PC-relative address
+			targetPC := pc + int(operand)
+			// Emit near jump: JMP rel32 (opcode 0xE9)
+			elf.emitBytes(0xE9)
+			dispOffset := len(elf.code)
+			elf.emitBytes(0, 0, 0, 0) // Placeholder for 32-bit displacement
+			instrEnd := len(elf.code)
+			elf.addJumpPatch(dispOffset, instrEnd, targetPC)
 
 		case cpu.Sys:
 			// Extract syscall ID and argument (syscall ID is in low 8 bits, safe to convert)
